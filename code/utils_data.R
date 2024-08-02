@@ -26,6 +26,14 @@ generate_censoring_times <- function(X) {
     return(C)
 }
 
+## Function to impute censoring times C|X,C>T,T=t
+impute_censoring_times <- function(X, T) {
+    num_samples <- length(T)
+    censor_rate = 0.2
+    C.imputed <- T + rexp(num_samples, rate = censor_rate)
+    return(C.imputed)
+}
+
 ## Function to combine and create observed data
 generate_survival_data <- function(num_samples, num_features) {
     X <- generate_covariates(num_samples, num_features)
