@@ -18,6 +18,17 @@ generate_true_survival <- function(X) {
     return(T)
 }
 
+## Function to combine and create observed data
+generate_survival_data <- function(num_samples, num_features) {
+    X <- generate_covariates(num_samples, num_features)
+    T <- generate_true_survival(X)
+    C <- generate_censoring_times(X)
+    observed_time <- pmin(T, C)
+    event <- observed_time == T
+    data <- data.frame(event_time=T, censoring_time=C, observed_time, event, X)
+    return(data)
+}
+
 ## Function to generate censoring times C|X
 generate_censoring_times <- function(X) {
     num_samples <- nrow(X)
@@ -34,13 +45,3 @@ impute_censoring_times <- function(X, T) {
     return(C.imputed)
 }
 
-## Function to combine and create observed data
-generate_survival_data <- function(num_samples, num_features) {
-    X <- generate_covariates(num_samples, num_features)
-    T <- generate_true_survival(X)
-    C <- generate_censoring_times(X)
-    observed_time <- pmin(T, C)
-    event <- observed_time == T
-    data <- data.frame(event_time=T, censoring_time=C, observed_time, event, X)
-    return(data)
-}
