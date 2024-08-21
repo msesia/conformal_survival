@@ -1,4 +1,4 @@
-CensoringDistribution <- R6::R6Class("CensoringDistribution",
+CensoringModel <- R6::R6Class("CensoringModel",
   public = list(
     model = NULL,  # Model for estimating the censoring distribution
 
