@@ -264,7 +264,7 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
       status <- response[, 2]
       covariates <- model.matrix(formula, data)[, -1, drop = FALSE]  # Remove intercept
       list(time = time, status = status, covariates = covariates)
-    }
+    }    
   )
 )
 

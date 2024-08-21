@@ -92,5 +92,6 @@ CensoringModel <- R6::R6Class("CensoringModel",
 
       return(C)
     }
+    
   )
 )

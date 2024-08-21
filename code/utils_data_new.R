@@ -123,7 +123,12 @@ SurvivalDataGenerator <- R6::R6Class("SurvivalDataGenerator",
       data <- data.frame(event_time = T, censoring_time = C, time = time,
                          status = status, X)
       return(data)
+    },
+ 
+    # Abstract method that does not do anything. (For compatibility)
+    fit = function(data) {
     }
+   
 
   )
 )

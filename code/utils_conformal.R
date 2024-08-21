@@ -95,14 +95,44 @@ weighted_calibration <- function(scores.cal, weights.cal, weight.new, alpha) {
 
 
 
-predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, c0=NULL) {
-    # Which quantile to predict? 1-alpha is a reasonable choice,
+predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, tuning.package=NULL, c0=NULL) {
+    # Which quantile to predict? alpha is a reasonable choice,
     # but in theory any other value can be used
-    probs <- c(1-alpha)
+    probs <- c(alpha)
 
-    ## Choose c0 if not supplied
-    if(is.null(c0)) {
-        c0 <- median(C.cal)
+    ## Function for tuning c0
+    tune.c0 <- function(tuning.package) {
+        ## Extract relevant stuff from tuning package
+        data.train <- tuning.package$data.train
+        surv_model_tune <- surv_model$clone(deep = TRUE)
+        cens_model_tune <- cens_model$clone(deep = TRUE)
+        C.train = tuning.package$C.train
+
+        ## Split the training data into two subsets
+        train_indices.1 <- sample(1:nrow(data.train), size = 0.5 * nrow(data.train))
+        data.train.1 <- data.train[train_indices.1, ]
+        data.train.2 <- data.train[-train_indices.1, ]
+        C.train.2 <- C.train[-train_indices.1]
+        ## Fit the survival model on the training(1) data
+        surv_model_tune$fit(Surv(time, status) ~ ., data = data.train.1)
+        ## Fit the censoring model on the training data
+        cens_model_tune$fit(data = data.train.1)
+        ## Simulate the lower bounds for different values of c0
+        c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.1,0.9,by=0.1))))
+        median.lb.candidates <- sapply(c0.candidates, function(c0) {
+            lower.tune <- predict_Candes(data.test, surv_model_tune, cens_model_tune, data.train.2, C.train.2, alpha, c0=c0)
+            return(median(lower.tune))
+        })
+        c0 <- c0.candidates[which.max(median.lb.candidates)]
+    }
+
+    if((is.null(c0)) && (!is.null(tuning.package))) {
+        c0 <- tune.c0(tuning.package)
+    } else {
+        ## Choose c0 if not supplied
+        if(is.null(c0)) {
+            c0 <- median(C.cal)
+        }
     }
 
     # Extract the covariate information (remove 'time' and 'status' columns, if present)
@@ -148,7 +178,7 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 }
 
 
-predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, adaptive_cutoffs=FALSE) {
+predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive") {
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
 
@@ -164,12 +194,20 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
         C.cal[idx.event] <- cens_imputator$sample_censoring_times(X.cal[idx.event,], T=Y.cal[idx.event])
     }
 
-    if(adaptive_cutoffs) {
+    if(cutoffs=="adaptive") {
         ## Apply Gui's method using the imputed censoring times
         out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha)
-    } else {
+    } else if (cutoffs=="candes-fixed") {
         ## Apply Candes' method using the imputed censoring times
         out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, c0=c0)
+    } else if (cutoffs=="candes-tuning") {
+        if(is.null(tuning.package)) {
+            stop("Must provide 'tuning.package' input to allow automatic tuning of c0.")
+        }
+        out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, tuning.package=tuning.package, c0=c0)
+    }
+    else {
+        stop(sprintf("Unknown input option: cutoffs = %s.", cutoffs))
     }
     return(out)
 }
@@ -186,7 +224,7 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
     X.test <- data.test |> select(-any_of(c("time", "status")))
     Y.cal <- data.cal$time
     num_cal <- nrow(X.cal)
-   
+
     ## Predict the survival quantiles for the given nominal percentiles
     if(use_censoring_model) {
         pred.T.cal <- surv_model$predict_quantiles(data.cal, probs = probs)
