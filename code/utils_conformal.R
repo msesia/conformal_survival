@@ -8,8 +8,10 @@ evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL) {
         coverage_event_time <- mean(lower_bound <= event_time)
     }
     mean_lower_bound <- mean(lower_bound)
+    median_lower_bound <- median(lower_bound)
     out <- tibble("Coverage (observed time)"=coverage_observed,
                   "Mean lower bound"=mean_lower_bound,
+                  "Median lower bound"=median_lower_bound,
                   "Coverage (event time)"=coverage_event_time)
     return(out)
 
@@ -94,8 +96,6 @@ weighted_calibration <- function(scores.cal, weights.cal, weight.new, alpha) {
 
 
 predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, c0=NULL) {
-    ## For special case with constant weights
-
     # Which quantile to predict? 1-alpha is a reasonable choice,
     # but in theory any other value can be used
     probs <- c(1-alpha)
@@ -149,8 +149,6 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 
 
 predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL) {
-    ## For special case with constant weights
-
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
 
