@@ -1,7 +1,7 @@
 plot_survival_curves <- function(predictions, individuals = NULL) {
     # Predict survival curves
     survival_curves <- as.data.frame(predictions$predictions)
-    time_points <- predictions$failure.times
+    time_points <- predictions$time.points
 
     df <- survival_curves
     colnames(df) <- time_points

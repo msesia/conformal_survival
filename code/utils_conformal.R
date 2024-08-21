@@ -18,9 +18,9 @@ evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL) {
 }
 
 predict_CQR <- function(data.test, surv_model, data.cal, alpha) {
-    # Which quantile to predict? 1-alpha is a reasonable choice,
+    # Which quantile to predict? alpha is a reasonable choice,
     # but in theory any other value can be used
-    probs <- c(1-alpha)
+    probs <- c(alpha)
 
     ## Calibration
     # Predict the survival quantiles for the given nominal percentile
@@ -124,8 +124,8 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
     scores.cal <- pred.cal - pmin(Y.cal[idx.keep], c0)
 
     ## Compute conformal weights
-    weights.cal <- 1/pmax(1e-6, cens_model$predict_survival(X.cal[idx.keep,], failure.times=c0)$predictions)
-    weights.test <- 1/pmax(1e-6, cens_model$predict_survival(X.test, failure.times=c0)$predictions)
+    weights.cal <- 1/pmax(1e-6, cens_model$predict_survival(X.cal[idx.keep,], time.points=c0)$predictions)
+    weights.test <- 1/pmax(1e-6, cens_model$predict_survival(X.test, time.points=c0)$predictions)
 
     ## Prediction for test data
     n <- length(scores.cal)
@@ -175,7 +175,7 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 }
 
 
-predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha) {
+predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, use_censoring_model=TRUE) {
     # Which quantile to predict? 1-alpha is a reasonable choice,
     # but in theory any other value can be used
     probs <- seq(0.01, 0.99, by=0.01)
@@ -185,25 +185,34 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
     X.cal <- data.cal |> select(-any_of(c("time", "status")))
     X.test <- data.test |> select(-any_of(c("time", "status")))
     Y.cal <- data.cal$time
-
-    
+    num_cal <- nrow(X.cal)
+   
     ## Predict the survival quantiles for the given nominal percentiles
-    pred.cal <- surv_model$predict_quantiles(data.cal, probs = probs)
-    pred.test <- surv_model$predict_quantiles(data.test, probs = probs)
+    if(use_censoring_model) {
+        pred.T.cal <- surv_model$predict_quantiles(data.cal, probs = probs)
+        pred.T.test <- surv_model$predict_quantiles(data.test, probs = probs)
+        beta = 1/pmax(1,log(num_cal))
+        pred.C.cal <- cens_model$predict_quantiles(data.cal, probs = 1-beta)[[1]]
+        pred.C.test <- cens_model$predict_quantiles(data.test, probs = 1-beta)[[1]]
+        pred.cal <- t(sapply(1:nrow(pred.T.cal), function(i) pmin(pred.T.cal[i, ], pred.C.cal[i])))
+        pred.test <- t(sapply(1:nrow(pred.T.test), function(i) pmin(pred.T.test[i, ], pred.C.test[i])))
+    } else {
+        pred.cal <- surv_model$predict_quantiles(data.cal, probs = probs)
+        pred.test <- surv_model$predict_quantiles(data.test, probs = probs)
+    }
 
     ## Compute the weights a function of a
-    num_cal <- nrow(X.cal)
     weights.cal.mat <- matrix(0, num_cal, num_a)
     for(i in 1:num_cal) {
         c0_seq = as.numeric(pred.cal[i,])
-        weights.cal.mat[i,] <- 1/pmax(1e-6, cens_model$predict_survival(X.cal[i,], failure.times=c0_seq)$predictions)
+        weights.cal.mat[i,] <- 1/pmax(1e-6, cens_model$predict_survival(X.cal[i,], time.points=c0_seq)$predictions)
     }
 
     ## num_test <- nrow(X.test)
     ## weights.test <- matrix(0, num_test, num_a)
     ## for(i in 1:num_test) {
     ##     c0_seq = as.numeric(pred.test[i,])C.cal
-    ##     weights.test[i,] <- 1/pmax(1e-6, cens_model$predict_survival(X.test[i,], failure.times=c0_seq)$predictions)
+    ##     weights.test[i,] <- 1/pmax(1e-6, cens_model$predict_survival(X.test[i,], time.points=c0_seq)$predictions)
     ## }
 
     ## Estimate alpha as a function of a
@@ -227,6 +236,6 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
     }
 
     # Output the prediction corresponding to a.star
-    lower <- pred.test[,a.star]
+    lower <- as.numeric(pred.test[,a.star])
     return(lower)
 }

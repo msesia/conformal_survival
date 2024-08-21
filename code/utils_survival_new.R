@@ -27,7 +27,7 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
   public = list(
     model = NULL,                # Holds the trained model object.
     formula = NULL,              # Stores the formula used to fit the model.
-    failure.times = NULL,        # A sequence of time points for which survival probabilities are calculated.
+    time.points = NULL,        # A sequence of time points for which survival probabilities are calculated.
 
     # Abstract method to fit a survival model
     # Description:
@@ -36,7 +36,7 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
     #   survival model to be fitted (e.g., parametric survival model using `survreg`, Cox proportional hazards,
     #   random survival forest). The fitted model should be stored in the `model` field of the class for later use
     #   in prediction methods. After fitting the model, relevant time points (e.g., failure times) should also be
-    #   stored in 'self$failure.times' for use in survival predictions.
+    #   stored in 'self$time.points' for use in survival predictions.
     #
     # Inputs:
     #   - formula: A survival formula of the form `Surv(time, status) ~ predictors`. The formula should
@@ -54,7 +54,7 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
     #   - Once the model is fitted, it should be stored in the `self$model` field, making it accessible for
     #     other methods (e.g., `predict_survival`, `predict_quantiles`).
     #   - If the model involves failure times (e.g., parametric models like `survreg`), these times can also
-    #     be stored in a field such as `self$failure.times` to be used later for survival predictions.
+    #     be stored in a field such as `self$time.points` to be used later for survival predictions.
     #
     # Example of Subclass Implementation Using `survreg`:
     #   - In a subclass using a parametric survival model via `survreg`:
@@ -63,7 +63,7 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
     #       self$model <- survival::survreg(formula, data = data, dist = dist)
     #
     #       # Store the range of observed times to help generate predictions later
-    #       self$failure.times <- seq(min(data$time), max(data$time), length.out = 100)
+    #       self$time.points <- seq(min(data$time), max(data$time), length.out = 100)
     #     }
     #
     fit = function(formula, data) {
@@ -86,7 +86,7 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
     # Inputs:
     #   - new_data: A data.frame containing new predictor variables for which to predict survival curves.
     #               The data frame must have the same structure as the data used to train the model.
-    #   - failure.times: (Optional) A numeric vector of custom failure times at which survival probabilities
+    #   - time.points: (Optional) A numeric vector of custom failure times at which survival probabilities
     #                    should be interpolated. If NULL, the default failure times from the model are used.
     #
     # Outputs:
@@ -94,12 +94,12 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
     #     - `predictions`: A matrix of survival probabilities. Each row corresponds to an individual from
     #                      `new_data`, and each column corresponds to a failure time. The value in each
     #                      cell represents the survival probability at the corresponding failure time.
-    #     - `failure.times`: A numeric vector of the failure times at which survival probabilities were
+    #     - `time.points`: A numeric vector of the failure times at which survival probabilities were
     #                        calculated (either the provided custom times or the model's default times).
     #
     # Steps:
-    #   1. The function begins by checking if `failure.times` is provided. If not, it defaults to using
-    #      `self$failure.times`, which should have been set during model fitting. If `failure.times` is
+    #   1. The function begins by checking if `time.points` is provided. If not, it defaults to using
+    #      `self$time.points`, which should have been set during model fitting. If `time.points` is
     #      still NULL, an error is raised.
     #
     #   2. It generates survival quantiles for the individuals in `new_data` by calling `self$predict_quantiles()`.
@@ -107,29 +107,29 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
     #      specified `probs` sequence (default: `seq(0.01, 0.99, by = 0.01)`).
     #
     #   3. A matrix `survival_probs` is initialized to store the interpolated survival probabilities for
-    #      each individual at the provided `failure.times`.
+    #      each individual at the provided `time.points`.
     #
     #   4. For each individual, the function constructs an interpolation function using `approxfun()`
     #      to perform linear monotone decreasing interpolation between the predicted quantiles and their
     #      corresponding probabilities. The survival probabilities are then interpolated at the specified
-    #      `failure.times`.
+    #      `time.points`.
     #
     #   5. Finally, the method returns a list containing the matrix of predicted survival probabilities
-    #      (`predictions`) and the vector of failure times (`failure.times`).
+    #      (`predictions`) and the vector of failure times (`time.points`).
     #
     # Example Usage:
     #   survival_predictions <- model$predict_survival(new_data = test_data)
-    #   survival_predictions_custom <- model$predict_survival(new_data = test_data, failure.times = c(100, 200, 300))
+    #   survival_predictions_custom <- model$predict_survival(new_data = test_data, time.points = c(100, 200, 300))
     #
-    predict_survival = function(new_data, failure.times = NULL) {
-      # If failure.times is not provided, use the default values from the model
-      if (is.null(failure.times)) {
-        failure.times <- self$failure.times
+    predict_survival = function(new_data, time.points = NULL) {
+      # If time.points is not provided, use the default values from the model
+      if (is.null(time.points)) {
+        time.points <- self$time.points
       }
 
-      # Ensure failure.times is provided either by the user or from the model
-      if (is.null(failure.times)) {
-        stop("Error: failure.times are not provided, and there is no default value set.")
+      # Ensure time.points is provided either by the user or from the model
+      if (is.null(time.points)) {
+        stop("Error: time.points are not provided, and there is no default value set.")
       }
 
       # Step 1: Predict quantiles for each probability in `probs`
@@ -137,7 +137,7 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
       survival_times <- self$predict_quantiles(new_data, probs = probs)
 
       # Step 2: Initialize a matrix to hold survival probabilities
-      survival_probs <- matrix(NA, nrow = nrow(survival_times), ncol = length(failure.times))
+      survival_probs <- matrix(NA, nrow = nrow(survival_times), ncol = length(time.points))
 
       # Step 3: Loop through each individual and interpolate the survival probabilities
       for (i in 1:nrow(survival_times)) {
@@ -145,12 +145,12 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
         interp_fun <- approxfun(rev(as.numeric(survival_times[i, ])), rev(probs),
                                 rule = 2, method = "linear", ties = "ordered")
 
-        # Apply the interpolation function to the provided failure.times
-        survival_probs[i, ] <- interp_fun(failure.times)
+        # Apply the interpolation function to the provided time.points
+        survival_probs[i, ] <- interp_fun(time.points)
       }
 
       # Step 4: Return the predicted survival curves and failure times
-      list(predictions = survival_probs, failure.times = failure.times)
+      list(predictions = survival_probs, time.points = time.points)
     },
 
 
@@ -198,14 +198,14 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
         ## Predict survival curves
         predictions <- self$predict_survival(new_data)
         survival_curves <- predictions$predictions
-        time_points <- predictions$failure.times  # Time points associated with the survival curves
+        time_points <- predictions$time.points  # Time points associated with the survival curves
 
         ## Function to find the survival time corresponding to a given survival percentile
         find_quantile <- function(survival_probs, time_points, percentile) {
             # Find the first time where survival probability drops below the percentile
             index <- which.max(survival_probs <= (1 - percentile))
             if (length(index) == 0 || index == 1) {
-                return(NA)  ## No time found (quantile is not reached)
+                return(max(time_points))  ## No time found (quantile is not reached)
             } else {
                 return(time_points[index])  # Return the corresponding time point
             }
@@ -231,9 +231,9 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
 
 
     # Predict survival with interpolation of survival probabilities at custom failure times (utility)
-    predict_survival_interpolate = function(survival_probs, original_failure_times, failure.times) {
+    predict_survival_interpolate = function(survival_probs, original_failure_times, time.points) {
       # Initialize a matrix to store interpolated survival probabilities
-      survival_probs_interp <- matrix(NA, nrow = nrow(survival_probs), ncol = length(failure.times))
+      survival_probs_interp <- matrix(NA, nrow = nrow(survival_probs), ncol = length(time.points))
 
       # Loop through each individual and interpolate the survival probabilities at the custom times
       for (i in 1:nrow(survival_probs)) {
@@ -241,7 +241,7 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
         interp_fun <- approxfun(original_failure_times, survival_probs[i, ], rule = 2, ties = "ordered")
 
         # Apply the interpolation function to the custom failure times
-        survival_probs_interp[i, ] <- interp_fun(failure.times)
+        survival_probs_interp[i, ] <- interp_fun(time.points)
       }
 
       # Return the interpolated survival probabilities
@@ -281,11 +281,11 @@ GRF_SurvivalForestWrapper <- R6::R6Class("GRF_SurvivalForestWrapper",
       self$model <- grf::survival_forest(parsed_data$covariates,
                                          Y = parsed_data$time,
                                          D = parsed_data$status)
-      self$failure.times <- self$model$failure.times  # Extract the default failure times
+      self$time.points <- self$model$failure.times  # Extract the default failure times
     },
 
     # Predict survival curves with optional custom failure times
-    predict_survival = function(new_data, failure.times = NULL) {
+    predict_survival = function(new_data, time.points = NULL) {
       # Generate the design matrix from the new data using the stored formula
       covariates_new <- model.matrix(self$formula, new_data)[, -1, drop = FALSE]
 
@@ -293,17 +293,17 @@ GRF_SurvivalForestWrapper <- R6::R6Class("GRF_SurvivalForestWrapper",
       predictions <- predict(self$model, newdata = covariates_new)
 
       # Use default failure times if custom ones are not provided
-      original_failure_times <- self$failure.times
+      original_failure_times <- self$time.points
       survival_probs <- predictions$predictions
 
       # If custom failure times are provided, use the default interpolation method
-      if (!is.null(failure.times)) {
-        survival_probs_interp <- self$predict_survival_interpolate(survival_probs, original_failure_times, failure.times)
-        return(list(predictions = survival_probs_interp, failure.times = failure.times))
+      if (!is.null(time.points)) {
+        survival_probs_interp <- self$predict_survival_interpolate(survival_probs, original_failure_times, time.points)
+        return(list(predictions = survival_probs_interp, time.points = time.points))
       }
 
       # If no custom failure times are provided, return the original predictions
-      return(list(predictions = survival_probs, failure.times = original_failure_times))
+      return(list(predictions = survival_probs, time.points = original_failure_times))
     }
   )
 )
@@ -327,11 +327,11 @@ randomForestSRC_SurvivalWrapper <- R6::R6Class("randomForestSRC_SurvivalWrapper"
       self$model <- randomForestSRC::rfsrc(formula, data = data, ntree = ntree, ...)
 
       # Store the failure times from the model
-      self$failure.times <- self$model$time.interest
+      self$time.points <- self$model$time.interest
     },
 
     # Predict survival curves
-    predict_survival = function(new_data, failure.times = NULL) {
+    predict_survival = function(new_data, time.points = NULL) {
       # Ensure that new_data is correctly formatted
       if (!is.data.frame(new_data)) {
         stop("new_data must be a data frame.")
@@ -341,15 +341,15 @@ randomForestSRC_SurvivalWrapper <- R6::R6Class("randomForestSRC_SurvivalWrapper"
       predictions <- predict(self$model, newdata = new_data)
 
       # Use the model's failure times if custom failure times are not provided
-      if (is.null(failure.times)) {
-        failure.times <- self$failure.times
+      if (is.null(time.points)) {
+        time.points <- self$time.points
       }
 
       # Extract survival probabilities for each individual at each failure time
       survival_probs <- predictions$survival
 
       # Return predictions and failure times
-      list(predictions = survival_probs, failure.times = failure.times)
+      list(predictions = survival_probs, time.points = time.points)
     }
   )
 )
@@ -372,17 +372,14 @@ SurvregModelWrapper <- R6::R6Class("SurvregModelWrapper",
     fit = function(formula, data) {
       parsed_data <- self$parse_formula(formula, data)
       self$model <- survival::survreg(formula, data = data, dist = self$dist, control = survival::survreg.control(maxiter = 1000))
-      self$failure.times <- seq(min(parsed_data$time), max(parsed_data$time), length.out = 100)
+      self$time.points <- seq(min(parsed_data$time), max(parsed_data$time), length.out = 100)
     },
 
     # Predict quantiles
     predict_quantiles = function(new_data, probs = c(0.25, 0.5, 0.75)) {
 
-      # Reverse the probabilities because `survreg` provides times at which events occur for 1 - p
-      flipped_probs <- 1 - probs
-
-      # Predict quantiles for each probability in `flipped_probs`
-      quantiles_matrix <- sapply(flipped_probs, function(p) {
+      # Predict quantiles for each probability in probs
+      quantiles_matrix <- sapply(probs, function(p) {
         predict(self$model, newdata = new_data, type = "quantile", p = p)
       })
 

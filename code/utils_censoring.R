@@ -35,7 +35,7 @@ CensoringModel <- R6::R6Class("CensoringModel",
 
       # Extract the survival probabilities and failure times
       survival_probs <- predictions$predictions
-      failure_times <- predictions$failure.times
+      failure_times <- predictions$time.points
 
       # Function to sample missing censoring times based on the estimated censoring distribution
       sample_time <- function(surv_probs, failure_times, min_time = -Inf, max_reps = 100) {
