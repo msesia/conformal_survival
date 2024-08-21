@@ -53,8 +53,8 @@ sample_km_conditional <- function(km_fit, c, n) {
   km_survival_conditional <- km_survival[km_times > c]
 
   # Check if there are any times greater than c
-  if(length(km_times_conditional) == 0) {
-    stop("No survival times greater than c.")
+  if (length(km_times_conditional) == 0) {
+      return(max(km_times))
   }
 
   # Normalize the conditional survival probabilities so they sum to 1
@@ -65,8 +65,16 @@ sample_km_conditional <- function(km_fit, c, n) {
     u <- runif(n)  # Uniform random numbers
     sapply(u, function(x) {
       # Find the time corresponding to the sampled probability
-      idx <- max(which(km_survival >= x))
-      return(km_times[idx])
+      idx <- which(km_survival >= x)
+
+      # Handle cases where no valid index is found
+      if (length(idx) == 0) {
+        # If no index is found, return the maximum time as a fallback
+        return(max(km_times))
+      } else {
+        # Otherwise, return the time corresponding to the maximum valid index
+        return(km_times[max(idx)])
+      }
     })
   }
 

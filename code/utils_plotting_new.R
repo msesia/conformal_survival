@@ -1,6 +1,5 @@
-plot_survival_curves <- function(fit, new_data = NULL, individuals = NULL) {
+plot_survival_curves <- function(predictions, individuals = NULL) {
     # Predict survival curves
-    predictions <- fit$predict_survival(new_data)
     survival_curves <- as.data.frame(predictions$predictions)
     time_points <- predictions$failure.times
 
