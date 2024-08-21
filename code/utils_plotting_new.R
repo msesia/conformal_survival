@@ -20,7 +20,7 @@ plot_survival_curves <- function(predictions, individuals = NULL) {
     # Plot using ggplot
     ggplot(df, aes(x = time, y = survival_probability, color = factor(individual))) +
         geom_line(linewidth = 1) +
-        labs(title = "Predicted Survival Curves",
+        labs(title = "Survival Curves",
              x = "Time",
              y = "Survival Probability",
              color = "Individual") +

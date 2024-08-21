@@ -45,7 +45,7 @@ predict_CQR <- function(data.test, surv_model, data.cal, alpha) {
     # Compute the calibrated lower bounds (don't go below 0)
     lower.test <- pmax(0, pred.test - calibration)
 
-    return(list(uncalibrated=pred.test, calibrated=lower.test))
+    return(lower.test)
 }
 
 
@@ -144,11 +144,11 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
         return(lower)
     })
 
-    return(list(uncalibrated=pred.test, calibrated=lower.test))
+    return(lower.test)
 }
 
 
-predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL) {
+predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, adaptive_cutoffs=FALSE) {
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
 
@@ -164,7 +164,69 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
         C.cal[idx.event] <- cens_imputator$sample_censoring_times(X.cal[idx.event,], T=Y.cal[idx.event])
     }
 
-    # Apply Candes' method using the imputed censoring times
-    out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, c0=c0)
+    if(adaptive_cutoffs) {
+        ## Apply Gui's method using the imputed censoring times
+        out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha)
+    } else {
+        ## Apply Candes' method using the imputed censoring times
+        out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, c0=c0)
+    }
     return(out)
+}
+
+
+predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha) {
+    # Which quantile to predict? 1-alpha is a reasonable choice,
+    # but in theory any other value can be used
+    probs <- seq(0.01, 0.99, by=0.01)
+    num_a <- length(probs)
+
+    # Extract the covariate information (remove 'time' and 'status' columns, if present)
+    X.cal <- data.cal |> select(-any_of(c("time", "status")))
+    X.test <- data.test |> select(-any_of(c("time", "status")))
+    Y.cal <- data.cal$time
+
+    
+    ## Predict the survival quantiles for the given nominal percentiles
+    pred.cal <- surv_model$predict_quantiles(data.cal, probs = probs)
+    pred.test <- surv_model$predict_quantiles(data.test, probs = probs)
+
+    ## Compute the weights a function of a
+    num_cal <- nrow(X.cal)
+    weights.cal.mat <- matrix(0, num_cal, num_a)
+    for(i in 1:num_cal) {
+        c0_seq = as.numeric(pred.cal[i,])
+        weights.cal.mat[i,] <- 1/pmax(1e-6, cens_model$predict_survival(X.cal[i,], failure.times=c0_seq)$predictions)
+    }
+
+    ## num_test <- nrow(X.test)
+    ## weights.test <- matrix(0, num_test, num_a)
+    ## for(i in 1:num_test) {
+    ##     c0_seq = as.numeric(pred.test[i,])C.cal
+    ##     weights.test[i,] <- 1/pmax(1e-6, cens_model$predict_survival(X.test[i,], failure.times=c0_seq)$predictions)
+    ## }
+
+    ## Estimate alpha as a function of a
+    compute_alpha_hat <- function(a) {
+        weights.cal <- weights.cal.mat[,a]
+        idx.keep.num <- which((Y.cal<pred.cal[,a])*(pred.cal[,a]<=C.cal)==TRUE)
+        idx.keep.den <- which((pred.cal[,a]<=C.cal)==TRUE)
+        if(length(idx.keep.den)==0) return(1)
+        if(length(idx.keep.num)==0) return(0)
+        out <- sum(weights.cal[idx.keep.num]) / sum(weights.cal[idx.keep.den])
+        return(out)
+    }
+    alpha_hat_values <- sapply(1:num_a, function(a) compute_alpha_hat(a))
+
+    # Find the smallest a such that alpha_hat(a) < alpha
+    idx.valid <- which(alpha_hat_values<=alpha)
+    if(length(idx.valid)>0) {
+        a.star <- min(idx.valid)
+    } else {
+        a.star <- num_a
+    }
+
+    # Output the prediction corresponding to a.star
+    lower <- pred.test[,a.star]
+    return(lower)
 }
