@@ -7,7 +7,7 @@ if [[ $SETUP == 1 ]]; then
   # Data distribution setting
   SETTING_LIST=(3)
   # List of training sample sizes (interpreted as num_samples_train)
-  N_TRAIN_LIST=(200 500 1000 2000 5000)
+  N_TRAIN_LIST=(200 500 1000 2000 5000 10000)
   # List of calibration sample sizes
   N_CAL_LIST=(500)
   # Sequence of batches for parallel simulation

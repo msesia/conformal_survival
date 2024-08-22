@@ -2,11 +2,17 @@ library(tidyverse)
 
 evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=NULL) {
     coverage_observed <- mean(lower_bound <= observed_time)
-    if(is.null(event_time)) {
-        coverage_event_time <- NA
-    } else {
-        coverage_event_time <- mean(lower_bound <= event_time)
-    }
+    coverage_event_time <- NA
+    mean_lower_bound_cover <- NA
+    median_lower_bound_cover <- NA
+    if(!is.null(event_time)) {
+        coverage_event_time <- mean(lower_bound <= event_time) 
+        idx.cover <- which(lower_bound <= event_time)
+        if(length(idx.cover)>0) {
+            mean_lower_bound_cover <- mean(lower_bound[idx.cover])
+            median_lower_bound_cover <- median(lower_bound[idx.cover])
+        }
+   }
     if(is.null(oracle)) {
         oracle_MSE <- NA
     } else {
@@ -17,6 +23,8 @@ evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=
     out <- tibble("Coverage (observed time)"=coverage_observed,
                   "Mean lower bound"=mean_lower_bound,
                   "Median lower bound"=median_lower_bound,
+                  "Mean lower bound (cover)"=mean_lower_bound_cover,
+                  "Median lower bound (cover)"=median_lower_bound_cover,
                   "Coverage (event time)"=coverage_event_time,
                   "Oracle MSE" = oracle_MSE)
     return(out)
