@@ -1,7 +1,7 @@
 # Load required libraries
 suppressMessages(library(tidyverse))
 
-# Load useful scripts
+## Source utility functions for data generation and analysis
 source("../conf_surv/utils_data_new.R")
 source("../conf_surv/utils_survival_new.R")
 source("../conf_surv/utils_censoring.R")
@@ -12,8 +12,29 @@ source("../conf_surv/utils_decensoring.R")
 ## Input parameters ##
 ######################
 
-num_samples_train <- 200
-num_samples_cal <- 500
+## Flag to determine if input should be parsed from command line
+parse_input <- TRUE
+
+if(parse_input) {
+    ## Reading command line arguments
+    args <- commandArgs(trailingOnly = TRUE)
+    ## Checking if the correct number of arguments is provided
+    if (length(args) < 5) {
+        stop("Insufficient arguments provided. Expected 4 arguments.")
+    }
+    ## Assigning command line arguments to variables
+    setup <- as.integer(args[1])
+    setting <- as.integer(args[2])
+    num_samples_train <- as.integer(args[3])
+    num_samples_cal <- as.integer(args[4])
+    batch <- as.integer(args[5])
+} else {
+    setup <- 1
+    setting <- 3
+    num_samples_train <- 200
+    num_samples_cal <- 500
+    batch <- 1
+}
 
 ######################
 ## Fixed parameters ##
@@ -25,6 +46,21 @@ num_samples_test <- 1000
 ## Nominal level
 alpha <- 0.1
 
+## Number of repetitions
+batch_size <- 10
+
+####################
+## Prepare output ##
+####################
+
+## Store important parameters
+header <- tibble(setup = setup, setting = setting, n_train = num_samples_train, n_cal = num_samples_cal, alpha = alpha, batch = batch)
+
+## Generate a unique and interpretable file name based on the input parameters
+output_file <- paste0("results/setup_", setup, "/", "setting", setting, "_train", num_samples_train, "_cal", num_samples_cal, "_batch", batch, ".txt")
+
+## Print the output file name to verify
+cat("Output file name:", output_file, "\n")
 
 ############################
 # Define data distribution #
@@ -35,8 +71,6 @@ covariate_generator <- function(num_samples) {
     num_features = 10
     matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
 }
-
-setting = 3
 
 if(setting==3) {
     # Initialize the survival time distribution
@@ -125,7 +159,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
 ## Define function to run experiment ##
 #######################################
 
-run.experiment <- function(random.state) {
+run_experiment <- function(random.state) {
     set.seed(random.state)
 
     ## Generate training, calibration, and test data
@@ -151,8 +185,48 @@ run.experiment <- function(random.state) {
 
         cbind(Method = name, res)
     }))
+
     return(results)
 }
 
-random.state <- 2024
-results <- run.experiment(random.state)
+
+## Function to run multiple experiments and gather results
+## Args:
+##   batch_size: Number of repetitions for each experimental setting
+## Returns:
+##   A tibble containing the combined results of all experiments
+run_multiple_experiments <- function(batch_size) {
+    results_df <- data.frame()  # Initialize an empty data frame to store cumulative results
+
+    # Print a progress bar header
+    cat("Running experiments\n")
+    pb <- txtProgressBar(min = 0, max = batch_size, style = 3)  # Initialize progress bar
+
+    # Loop over each repetition
+    for (i in 1:batch_size) {
+        random.state <- batch*1000 + i
+        res <- run_experiment(random.state)  # Run experiment and get the result
+
+        ## Combine the results with experiment metadata
+        result_df <- tibble(Seed = random.state) |> cbind(header) |> cbind(res)
+
+        # Add the result to the cumulative data frame
+        results_df <- rbind(results_df, result_df)
+
+        # Write the cumulative results to the CSV file
+        write.csv(results_df, output_file, row.names = FALSE)
+
+        setTxtProgressBar(pb, i)  # Update progress bar
+    }
+
+    close(pb)  # Close the progress bar
+
+    return(results_df)  # Return the cumulative results data frame
+}
+
+#####################
+## Run experiments ##
+#####################
+
+## Run the experiments with specified parameters
+results <- run_multiple_experiments(batch_size)
