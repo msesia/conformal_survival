@@ -126,7 +126,7 @@ SurvivalDataGenerator <- R6::R6Class("SurvivalDataGenerator",
     },
  
     # Abstract method that does not do anything. (For compatibility)
-    fit = function(data) {
+    fit = function(formula, data) {
     }
    
 

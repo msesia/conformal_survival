@@ -116,7 +116,7 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
         ## Fit the survival model on the training(1) data
         surv_model_tune$fit(Surv(time, status) ~ ., data = data.train.1)
         ## Fit the censoring model on the training data
-        cens_model_tune$fit(data = data.train.1)
+        cens_model_tune$fit(Surv(time, 1-status) ~ ., data = data.train.1)
         ## Simulate the lower bounds for different values of c0
         c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.1,0.9,by=0.1))))
         median.lb.candidates <- sapply(c0.candidates, function(c0) {
