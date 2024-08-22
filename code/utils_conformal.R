@@ -136,8 +136,8 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
     }
 
     # Extract the covariate information (remove 'time' and 'status' columns, if present)
-    X.cal <- data.cal |> select(-any_of(c("time", "status")))
-    X.test <- data.test |> select(-any_of(c("time", "status")))
+    ##X.cal <- data.cal |> select(-any_of(c("time", "status")))
+    ##X.test <- data.test |> select(-any_of(c("time", "status")))
     Y.cal <- data.cal$time
 
     ## Remove calibration points with small censoring
@@ -154,8 +154,8 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
     scores.cal <- pred.cal - pmin(Y.cal[idx.keep], c0)
 
     ## Compute conformal weights
-    weights.cal <- 1/pmax(1e-6, cens_model$predict(X.cal[idx.keep,], time.points=c0)$predictions)
-    weights.test <- 1/pmax(1e-6, cens_model$predict(X.test, time.points=c0)$predictions)
+    weights.cal <- 1/pmax(1e-6, cens_model$predict(data.cal[idx.keep,], time.points=c0)$predictions)
+    weights.test <- 1/pmax(1e-6, cens_model$predict(data.test, time.points=c0)$predictions)
 
     ## Prediction for test data
     n <- length(scores.cal)
@@ -183,7 +183,7 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
     C.cal <- data.cal$time
 
     # Extract the covariate information (remove 'time' and 'status' columns, if present)
-    X.cal <- data.cal |> select(-any_of(c("time", "status")))
+    ##X.cal <- data.cal |> select(-any_of(c("time", "status")))
     Y.cal <- data.cal$time
 
     # Find the indices of observations for which the censoring time needs to be imputed
@@ -191,7 +191,7 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 
     if(length(idx.event) > 0) {
         # Impute the missing censoring times using the oracle (data-generating) model
-        C.cal[idx.event] <- cens_imputator$sample(X.cal[idx.event,], T=Y.cal[idx.event])
+        C.cal[idx.event] <- cens_imputator$sample(data.cal[idx.event,], T=Y.cal[idx.event])
     }
 
     if(cutoffs=="adaptive") {
@@ -213,45 +213,39 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 }
 
 
-predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, use_censoring_model=FALSE) {
+predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_censoring_model=FALSE) {
+   
     # Which quantile to predict? 1-alpha is a reasonable choice,
     # but in theory any other value can be used
     probs <- seq(0.01, 0.99, by=0.01)
     num_a <- length(probs)
 
     # Extract the covariate information (remove 'time' and 'status' columns, if present)
-    X.cal <- data.cal |> select(-any_of(c("time", "status")))
-    X.test <- data.test |> select(-any_of(c("time", "status")))
+    ##X.cal <- data.cal |> select(-any_of(c("time", "status")))
+    ##X.test <- data.test |> select(-any_of(c("time", "status")))
     Y.cal <- data.cal$time
-    num_cal <- nrow(X.cal)
+    num_cal <- nrow(data.cal)
 
     ## Predict the survival quantiles for the given nominal percentiles
     if(use_censoring_model) {
-        pred.T.cal <- surv_model$predict_quantiles(data.cal, probs = probs)
-        pred.T.test <- surv_model$predict_quantiles(data.test, probs = probs)
+        pred.T.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
+        pred.T.test <- pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift,0 )
         beta = 1/pmax(1,log(num_cal))
         pred.C.cal <- cens_model$predict_quantiles(data.cal, probs = 1-beta)[[1]]
         pred.C.test <- cens_model$predict_quantiles(data.test, probs = 1-beta)[[1]]
         pred.cal <- t(sapply(1:nrow(pred.T.cal), function(i) pmin(pred.T.cal[i, ], pred.C.cal[i])))
         pred.test <- t(sapply(1:nrow(pred.T.test), function(i) pmin(pred.T.test[i, ], pred.C.test[i])))
     } else {
-        pred.cal <- surv_model$predict_quantiles(data.cal, probs = probs)
-        pred.test <- surv_model$predict_quantiles(data.test, probs = probs)
+        pred.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
+        pred.test <- pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift, 0)
     }
 
     ## Compute the weights a function of a
     weights.cal.mat <- matrix(0, num_cal, num_a)
     for(i in 1:num_cal) {
         c0_seq = as.numeric(pred.cal[i,])
-        weights.cal.mat[i,] <- 1/pmax(1e-6, cens_model$predict(X.cal[i,], time.points=c0_seq)$predictions)
+        weights.cal.mat[i,] <- 1/pmax(1e-6, cens_model$predict(data.cal[i,], time.points=c0_seq)$predictions)
     }
-
-    ## num_test <- nrow(X.test)
-    ## weights.test <- matrix(0, num_test, num_a)
-    ## for(i in 1:num_test) {
-    ##     c0_seq = as.numeric(pred.test[i,])C.cal
-    ##     weights.test[i,] <- 1/pmax(1e-6, cens_model$predict(X.test[i,], time.points=c0_seq)$predictions)
-    ## }
 
     ## Estimate alpha as a function of a
     compute_alpha_hat <- function(a) {
@@ -269,11 +263,13 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
     idx.valid <- which(alpha_hat_values<=alpha)
     if(length(idx.valid)>0) {
         a.star <- min(idx.valid)
+        ## Compute the prediction corresponding to a.star
+        lower <- as.numeric(pred.test[,a.star])
     } else {
         a.star <- num_a
+        ## Be careful that in this case a.star may not lead to valid predictions
+        lower <- as.numeric(pred.test[,a.star]) * 0
     }
-
-    # Output the prediction corresponding to a.star
-    lower <- as.numeric(pred.test[,a.star])
+    
     return(lower)
 }

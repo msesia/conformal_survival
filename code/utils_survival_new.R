@@ -426,10 +426,10 @@ CoxphModelWrapper <- R6::R6Class("CoxphModelWrapper",
         }
 
         ## Step 1: Calculate linear predictors for the new data
-        linear_predictors <- predict(model, newdata = new_data, type = "lp")
+        linear_predictors <- predict(self$model, newdata = new_data, type = "lp")
 
         ## Step 2: Extract the baseline cumulative hazard
-        baseline_hazard <- basehaz(model, centered = TRUE)
+        baseline_hazard <- basehaz(self$model, centered = TRUE)
 
         ## Step 3: Interpolate baseline hazard to match the requested time.points
         baseline_hazard_at_times <- approx(baseline_hazard$time, baseline_hazard$hazard, xout = time.points)$y
