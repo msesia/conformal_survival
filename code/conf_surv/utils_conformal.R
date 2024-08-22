@@ -1,18 +1,24 @@
 library(tidyverse)
 
-evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL) {
+evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=NULL) {
     coverage_observed <- mean(lower_bound <= observed_time)
     if(is.null(event_time)) {
         coverage_event_time <- NA
     } else {
         coverage_event_time <- mean(lower_bound <= event_time)
     }
+    if(is.null(oracle)) {
+        oracle_MSE <- NA
+    } else {
+        oracle_MSE <- mean((lower_bound-oracle)^2)
+    }
     mean_lower_bound <- mean(lower_bound)
     median_lower_bound <- median(lower_bound)
     out <- tibble("Coverage (observed time)"=coverage_observed,
                   "Mean lower bound"=mean_lower_bound,
                   "Median lower bound"=median_lower_bound,
-                  "Coverage (event time)"=coverage_event_time)
+                  "Coverage (event time)"=coverage_event_time,
+                  "Oracle MSE" = oracle_MSE)
     return(out)
 
 }

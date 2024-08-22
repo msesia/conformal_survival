@@ -179,9 +179,8 @@ run_experiment <- function(random.state) {
 
     ## Evaluate results
     results <- do.call(rbind, lapply(names(predictions), function(name) {
-        res = evaluate_bounds(data.test$time,
-                              predictions[[name]],
-                              event_time=data.test.oracle$event_time)
+        res = evaluate_bounds(data.test$time, predictions[[name]],
+                              event_time=data.test.oracle$event_time, oracle=predictions$oracle)
 
         cbind(Method = name, res)
     }))
