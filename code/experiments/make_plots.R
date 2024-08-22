@@ -38,7 +38,8 @@ method_shapes <- c(
 results <- load_data(1)
 
 summary <- results %>%
-    pivot_longer(c("Coverage (observed time)", "Mean lower bound", "Median lower bound", "Coverage (event time)", "Oracle MSE"),
+    pivot_longer(c("Coverage (observed time)", "Mean lower bound", "Median lower bound", "Mean lower bound (cover)", "Median lower bound (cover)",
+                   "Coverage (event time)", "Oracle MSE"),
                  names_to="metric", values_to="value") %>%
     group_by(setup, setting, n_train, n_cal, alpha, Method, metric) %>%
     summarise(SE = sd(value)/sqrt(n()), value=mean(value))
@@ -47,9 +48,9 @@ method.values <- c("oracle", "nominal", "cqr", "cqr.decensor", "candes.oracle", 
 method.labels <- c("Oracle", "Nominal", "CQR", "Qi et al.", "Candes (oracle)", "Candes (prototype)", "Gui et al. (oracle)", "Gui et al. (prototype)")
 
 
-methods.show <- c(1, 2, 3, 4, 5, 7)
+methods.show <- c(1, 2, 3, 4, 5, 6, 7, 8)
 
-methods.show <- c(1, 2, 3, 4, 6, 8)
+#methods.show <- c(1, 2, 3, 4, 6, 8)
 
 ## Plotting the data
 summary %>%
