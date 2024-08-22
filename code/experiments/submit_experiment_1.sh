@@ -6,12 +6,12 @@ SETUP=1
 if [[ $SETUP == 1 ]]; then
   # Data distribution setting
   SETTING_LIST=(3)
+  # List of training sample sizes (interpreted as num_samples_train)
+  N_TRAIN_LIST=(200 500 1000 2000 5000)
   # List of calibration sample sizes
   N_CAL_LIST=(500)
-  # List of training sample sizes (interpreted as num_samples_train)
-  N_TRAIN_LIST=(1000)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 10)
+  BATCH_LIST=$(seq 1 5)
 
   MEMO=5G
 fi
@@ -62,7 +62,7 @@ for BATCH in $BATCH_LIST; do
           # Print order
           echo $ORD
           # Submit order
-          #$ORD
+          $ORD
           # Run command now
           #./$SCRIPT
 
