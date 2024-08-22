@@ -146,7 +146,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     }
 
     # Apply prototype (Candes)
-    predictions$prototype.candes <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha)
+    predictions$prototype.candes <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="candes-fixed")
 
     # Apply prototype (Gui)
     predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive")
