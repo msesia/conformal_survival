@@ -154,8 +154,8 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
     scores.cal <- pred.cal - pmin(Y.cal[idx.keep], c0)
 
     ## Compute conformal weights
-    weights.cal <- 1/pmax(1e-6, cens_model$predict_survival(X.cal[idx.keep,], time.points=c0)$predictions)
-    weights.test <- 1/pmax(1e-6, cens_model$predict_survival(X.test, time.points=c0)$predictions)
+    weights.cal <- 1/pmax(1e-6, cens_model$predict(X.cal[idx.keep,], time.points=c0)$predictions)
+    weights.test <- 1/pmax(1e-6, cens_model$predict(X.test, time.points=c0)$predictions)
 
     ## Prediction for test data
     n <- length(scores.cal)
@@ -191,7 +191,7 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 
     if(length(idx.event) > 0) {
         # Impute the missing censoring times using the oracle (data-generating) model
-        C.cal[idx.event] <- cens_imputator$sample_censoring_times(X.cal[idx.event,], T=Y.cal[idx.event])
+        C.cal[idx.event] <- cens_imputator$sample(X.cal[idx.event,], T=Y.cal[idx.event])
     }
 
     if(cutoffs=="adaptive") {
@@ -213,7 +213,7 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 }
 
 
-predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, use_censoring_model=TRUE) {
+predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, use_censoring_model=FALSE) {
     # Which quantile to predict? 1-alpha is a reasonable choice,
     # but in theory any other value can be used
     probs <- seq(0.01, 0.99, by=0.01)
@@ -243,14 +243,14 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
     weights.cal.mat <- matrix(0, num_cal, num_a)
     for(i in 1:num_cal) {
         c0_seq = as.numeric(pred.cal[i,])
-        weights.cal.mat[i,] <- 1/pmax(1e-6, cens_model$predict_survival(X.cal[i,], time.points=c0_seq)$predictions)
+        weights.cal.mat[i,] <- 1/pmax(1e-6, cens_model$predict(X.cal[i,], time.points=c0_seq)$predictions)
     }
 
     ## num_test <- nrow(X.test)
     ## weights.test <- matrix(0, num_test, num_a)
     ## for(i in 1:num_test) {
     ##     c0_seq = as.numeric(pred.test[i,])C.cal
-    ##     weights.test[i,] <- 1/pmax(1e-6, cens_model$predict_survival(X.test[i,], time.points=c0_seq)$predictions)
+    ##     weights.test[i,] <- 1/pmax(1e-6, cens_model$predict(X.test[i,], time.points=c0_seq)$predictions)
     ## }
 
     ## Estimate alpha as a function of a

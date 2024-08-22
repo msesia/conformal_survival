@@ -29,9 +29,9 @@ CensoringModel <- R6::R6Class("CensoringModel",
     #   - max_reps: (Optional) The maximum number of sampling repetitions to enforce the C > T condition.
     # Outputs:
     #   - A vector of sampled censoring times (C) for each individual. If T is provided, C > T.
-    sample_censoring_times = function(new_data, T = NULL, max_reps = 100) {
+    sample = function(new_data, T = NULL, max_reps = 100) {
       # Predict survival curves for the covariates X using the fitted censoring distribution model
-      predictions <- self$model$predict_survival(new_data = new_data)
+      predictions <- self$model$predict(new_data = new_data)
 
       # Extract the survival probabilities and failure times
       survival_probs <- predictions$predictions
