@@ -19,7 +19,7 @@ CensoringModel <- R6::R6Class("CensoringModel",
       data.cens$status <- 1 - data.cens$status
 
       # Fit the censoring model using the survival data
-      self$model$fit(Surv(time, status) ~ ., data = data.cens)
+      self$model$fit(survival::Surv(time, status) ~ ., data = data.cens)
     },
 
     # Method to sample censoring times based on the fitted censoring distribution
