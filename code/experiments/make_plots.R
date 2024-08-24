@@ -20,6 +20,7 @@ method_colors <- c(
   "Candes (oracle)" = "darkblue",
   "Candes (oracle, tuned)" = "blue",
   "Candes (prototype)" = "lightblue",
+  "Candes (prototype, tuned)" = "cadetblue",
   "Gui et al. (oracle)" = "darkgreen",
   "Gui et al. (prototype)" = "green"
 )
@@ -33,6 +34,7 @@ method_shapes <- c(
   "Candes (oracle)" = 16,  # Circle
   "Candes (oracle, tuned)" = 16,  # Circle
   "Candes (prototype)" = 18, # Diamond
+  "Candes (prototype, tuned)" = 18, # Diamond
   "Gui et al. (oracle)" = 19, # Filled circle
   "Gui et al. (prototype)" = 18 # Diamond (same as Candes prototype)
 )
@@ -46,17 +48,19 @@ summary <- results %>%
     group_by(setup, setting, n_train, n_cal, alpha, Method, metric) %>%
     summarise(SE = sd(value)/sqrt(n()), value=mean(value))
 
-method.values <- c("oracle", "nominal", "cqr", "cqr.decensor", "candes.oracle", "candes.oracle.tuned", "prototype.candes", "gui.oracle", "prototype.gui")
-method.labels <- c("Oracle", "Nominal", "CQR", "Qi et al.", "Candes (oracle)", "Candes (oracle, tuned)", "Candes (prototype)", "Gui et al. (oracle)", "Gui et al. (prototype)")
+method.values <- c("oracle", "nominal", "cqr", "cqr.decensor", "candes.oracle", "candes.oracle.tuned",
+                   "prototype.candes", "prototype.candes.tuned", "gui.oracle", "prototype.gui")
+method.labels <- c("Oracle", "Nominal", "CQR", "Qi et al.", "Candes (oracle)", "Candes (oracle, tuned)", "Candes (prototype)", "Candes (prototype, tuned)",
+                   "Gui et al. (oracle)", "Gui et al. (prototype)")
 
 
-methods.show <- c(1, 2, 3, 4, 5, 6, 7, 8, 9)
+methods.show <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
 #methods.show <- c(1, 2, 3, 4, 6, 8)
 
 ## Plotting the data
 summary %>%
-    filter(setting==2,
+    filter(setting==1,
            metric != "Coverage (observed time)",
            Method %in% method.values[methods.show]) %>%
     mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%

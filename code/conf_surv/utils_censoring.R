@@ -75,8 +75,6 @@ CensoringModel <- R6::R6Class("CensoringModel",
 
         # If the maximum number of repetitions is exceeded, return T (true survival time)
         if (!valid_time) {
-            print(min_time)
-            warning("Max repetitions exceeded; returning T as the censoring time.")
             return(min_time)  # Return the true survival time as the censoring time
         }
 

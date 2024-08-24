@@ -18,19 +18,26 @@ parse_input <- TRUE
 if(parse_input) {
     ## Reading command line arguments
     args <- commandArgs(trailingOnly = TRUE)
+    
     ## Checking if the correct number of arguments is provided
-    if (length(args) < 5) {
-        stop("Insufficient arguments provided. Expected 4 arguments.")
+    if (length(args) < 7) {
+        stop("Insufficient arguments provided. Expected 7 arguments.")
     }
+    
     ## Assigning command line arguments to variables
     setup <- as.integer(args[1])
     setting <- as.integer(args[2])
-    num_samples_train <- as.integer(args[3])
-    num_samples_cal <- as.integer(args[4])
-    batch <- as.integer(args[5])
+    surv_model_type <- args[3]
+    cens_model_type <- args[4]
+    num_samples_train <- as.integer(args[5])
+    num_samples_cal <- as.integer(args[6])
+    batch <- as.integer(args[7])
+
 } else {
     setup <- 1
     setting <- 3
+    surv_model_type <- "grf"
+    cens_model_type <- "cox"
     num_samples_train <- 200
     num_samples_cal <- 500
     batch <- 1
@@ -40,7 +47,7 @@ if(parse_input) {
 ## Fixed parameters ##
 ######################
 
-# Sample sizes
+## Test sample size
 num_samples_test <- 1000
 
 ## Nominal level
@@ -53,14 +60,28 @@ batch_size <- 10
 ## Prepare output ##
 ####################
 
-## Store important parameters
-header <- tibble(setup = setup, setting = setting, n_train = num_samples_train, n_cal = num_samples_cal, alpha = alpha, batch = batch)
+## Store important parameters including model types
+header <- tibble(setup = setup, 
+                 setting = setting, 
+                 surv_model_type = surv_model_type, 
+                 cens_model_type = cens_model_type, 
+                 n_train = num_samples_train, 
+                 n_cal = num_samples_cal, 
+                 alpha = alpha, 
+                 batch = batch)
 
 ## Generate a unique and interpretable file name based on the input parameters
-output_file <- paste0("results/setup_", setup, "/", "setting", setting, "_train", num_samples_train, "_cal", num_samples_cal, "_batch", batch, ".txt")
+output_file <- paste0("results/setup_", setup, "/", 
+                      "setting", setting, 
+                      "_surv_", surv_model_type, 
+                      "_cens_", cens_model_type, 
+                      "_train", num_samples_train, 
+                      "_cal", num_samples_cal, 
+                      "_batch", batch, ".txt")
 
 ## Print the output file name to verify
 cat("Output file name:", output_file, "\n")
+
 
 ############################
 # Define data distribution #
@@ -128,12 +149,31 @@ if(setting==1) {
 # Initialize the data generator
 generator <- SurvivalDataGenerator$new(covariate_generator, survival_generator, censoring_generator)
 
-##############################################
-## Define the survival and censoring models ##
-##############################################
+###################################################
+## Instantiate the survival and censoring models ##
+###################################################
 
-surv_model <- CoxphModelWrapper$new()
-cens_base_model <- CoxphModelWrapper$new()
+# Define a mapping between model types and constructors for survival and censoring models
+model_constructors <- list(
+    grf = GRF_SurvivalForestWrapper$new,
+    survreg = function() SurvregModelWrapper$new(dist="lognormal"),
+    rf = randomForestSRC_SurvivalWrapper$new,
+    cox = CoxphModelWrapper$new
+)
+
+# Instantiate survival model based on the specified type
+if (!is.null(model_constructors[[surv_model_type]])) {
+    surv_model <- model_constructors[[surv_model_type]]()
+} else {
+    stop("Unknown survival model type!")
+}
+
+# Instantiate censoring model based on the specified type
+if (!is.null(model_constructors[[cens_model_type]])) {
+    cens_base_model <- model_constructors[[cens_model_type]]()
+} else {
+    stop("Unknown censoring model type!")
+}
 
 # Create an instance of the CensoringModel class with the model
 cens_model <- CensoringModel$new(model = cens_base_model)
