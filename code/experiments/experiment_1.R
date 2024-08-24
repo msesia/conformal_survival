@@ -95,7 +95,7 @@ if(setting==1) {
     cens_mu_fun <- function(X) 0*X[,1] + 0.5 + 0.2
     cens_sigma_fun <- function(X) 0*X[,1] + 0.1
     censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
-    
+
 } else if(setting==3) {
     ## Initialize the covariate model
     covariate_generator <- function(num_samples) {
@@ -144,53 +144,57 @@ cens_model <- CensoringModel$new(model = cens_base_model)
 
 analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model, generator=NULL, C.train.oracle=NULL, C.cal.oracle=NULL) {
 
-    # Fit the survival model on the training data
+    ## Fit the survival model on the training data
     surv_model$fit(survival::Surv(time, status) ~ ., data = data.train)
 
-    # Fit the censoring model on the training data
+    ## Fit the censoring model on the training data
     cens_model$fit(data = data.train)
 
     ## Fit the Kaplan-Meier survival model for the de-censoring method
     surv_object <- survival::Surv(time = data.train$time, event = data.train$status)
     km_fit <- survival::survfit(surv_object ~ 1)
 
-    # Apply all methods
+    ## Apply all methods
     predictions <- c()
 
-    # Construct oracle lower bound
+    ## Construct oracle lower bound
     if(!is.null(generator)) {
         predictions$oracle <- generator$survival$predict_quantiles(select(data.test, -time, -status), probs=c(alpha))[[1]]
     }
 
-    # Construct nominal lower bound
+    ## Construct nominal lower bound
     predictions$nominal <- surv_model$predict_quantiles(data.test, probs=alpha)[[1]]
 
-    # Apply naive CQR
+    ## Apply naive CQR
     predictions$cqr <- predict_CQR(data.test, surv_model, data.cal, alpha)
 
-    # Apply CQR with de-censoring
+    ## Apply CQR with de-censoring
     predictions$cqr.decensor <- predict_decensoring(data.test, surv_model, km_fit, data.cal, alpha, R=10)
 
-   
+
     if(!is.null(C.cal.oracle)) {
-        ## Apply Candes' method with "oracle" censoring model (with fixed c0)        
+        ## Apply Candes' method with "oracle" censoring model (with fixed c0)
         predictions$candes.oracle <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
 
         ## Apply Candes' method with "oracle" censoring model (with fixed c0)
         if(!is.null(C.train.oracle)) {
-            tuning.package <- list(data.train = data.train, C.train = C.train.oracle)
-            predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, 
-                                                              tuning.package=tuning.package)
+            tuning.package.oracle <- list(data.train = data.train, C.train = C.train.oracle)
+            predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha,
+                                                              tuning.package=tuning.package.oracle)
         }
-        
+
         ## Apply Gui's method with "oracle" censoring model
         predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
     }
 
-    # Apply prototype (Candes)
+    ## Apply prototype (Candes, with fixed c0)
     predictions$prototype.candes <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="candes-fixed")
 
-    # Apply prototype (Gui)
+    ## Apply prototype (Candes, with tuned c0)
+    tuning.package <- list(data.train = data.train)
+    predictions$prototype.candes.tuned <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, tuning.package=tuning.package, cutoffs="candes-tuning")
+
+    ## Apply prototype (Gui)
     predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive")
 
 

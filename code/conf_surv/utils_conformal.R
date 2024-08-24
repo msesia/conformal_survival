@@ -201,11 +201,12 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
 
-    # Extract the covariate information (remove 'time' and 'status' columns, if present)
+    ## Extract the covariate information (remove 'time' and 'status' columns, if present)
     ##X.cal <- data.cal |> select(-any_of(c("time", "status")))
     Y.cal <- data.cal$time
 
-    # Find the indices of observations for which the censoring time needs to be imputed
+    ## Impute the missing censoring times for calibration data
+    ## Find the indices of observations for which the censoring time needs to be imputed
     idx.event <- which(data.cal$status==TRUE)
 
     if(length(idx.event) > 0) {
@@ -223,6 +224,14 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
         if(is.null(tuning.package)) {
             stop("Must provide 'tuning.package' input to allow automatic tuning of c0.")
         }
+        ## Impute the missing censoring times for training data
+        idx.event.train <- which(tuning.package$data.train$status==TRUE)
+        C.train <- tuning.package$data.train$time
+        if(length(idx.event.train) > 0) {
+            Y.train <- tuning.package$data.train$event
+            C.train[idx.event.train] <- cens_imputator$sample(tuning.package$data.train[idx.event.train,], T=Y.train[idx.event])
+        }
+        tuning.package$C.train <- C.train
         out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, tuning.package=tuning.package, c0=c0)
     }
     else {
