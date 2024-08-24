@@ -89,6 +89,7 @@ weighted_calibration <- function(scores.cal, weights.cal, weight.new, alpha) {
   # Combine the weights from calibration and new data
   weight <- c(weights.cal, weight.new)
   weight <- weight / sum(weight)  # Normalize weights to sum to 1
+    
 
   # Combine scores and append an infinity value for the new data
   score_vec <- c(scores.cal, Inf)
@@ -99,10 +100,15 @@ weighted_calibration <- function(scores.cal, weights.cal, weight.new, alpha) {
   sort_w <- weight[order_score]
 
   # Find the minimum index where the cumulative weight reaches or exceeds 1 - alpha
-  idxw <- min(which(cumsum(sort_w) >= 1 - alpha))
+  idx.above <- which(cumsum(sort_w) >= 1 - alpha)
+  if(length(idx.above)>0) {
+      idxw <- min(idx.above)
+      ## Compute the calibration term as the score at the index determined by the cumulative weights
+      calib_term <- sort_score[idxw]
+  } else {
+      calib_term <- Inf
+  }
 
-  # Compute the calibration term as the score at the index determined by the cumulative weights
-  calib_term <- sort_score[idxw]
 
   return(calib_term)
 }
@@ -170,7 +176,11 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
     ## Compute conformal weights
     weights.cal <- 1/pmax(1e-6, cens_model$predict(data.cal[idx.keep,], time.points=c0)$predictions)
     weights.test <- 1/pmax(1e-6, cens_model$predict(data.test, time.points=c0)$predictions)
-
+    if(any(is.na(weights.cal))) {
+        print("Problem: NA weights!")
+        cat(sprintf("c0=%.4f\n", c0))
+        print(cens_model$predict(data.cal[idx.keep,], time.points=seq(0,c0,length.out=4)))
+    }
     ## Prediction for test data
     n <- length(scores.cal)
     n.test <- nrow(data.test)

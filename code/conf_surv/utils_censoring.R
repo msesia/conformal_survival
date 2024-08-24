@@ -43,6 +43,11 @@ CensoringModel <- R6::R6Class("CensoringModel",
         sampled_time <- NA
         reps <- 0  # Initialize the repetition counter
 
+        if(min_time>=max(failure_times)) {
+            ## The provided min_time is outside the support of the estimated survival distribution
+            ## The only reasonable thing we can do is return the upper bound of the support of the estimated survival distribution
+            return(max(failure_times))
+        }
         # Keep sampling until a valid time greater than min_time is found, or the max number of repetitions is exceeded
         while (!valid_time && reps < max_reps) {
           u <- runif(1)  # Generate a uniform random number
@@ -70,6 +75,7 @@ CensoringModel <- R6::R6Class("CensoringModel",
 
         # If the maximum number of repetitions is exceeded, return T (true survival time)
         if (!valid_time) {
+            print(min_time)
             warning("Max repetitions exceeded; returning T as the censoring time.")
             return(min_time)  # Return the true survival time as the censoring time
         }

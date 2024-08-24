@@ -425,14 +425,18 @@ CoxphModelWrapper <- R6::R6Class("CoxphModelWrapper",
             time.points <- self$time.points
         }
 
+       
         ## Step 1: Calculate linear predictors for the new data
         linear_predictors <- predict(self$model, newdata = new_data, type = "lp")
 
         ## Step 2: Extract the baseline cumulative hazard
         baseline_hazard <- survival::basehaz(self$model, centered = TRUE)
 
+       
         ## Step 3: Interpolate baseline hazard to match the requested time.points
-        baseline_hazard_at_times <- approx(baseline_hazard$time, baseline_hazard$hazard, xout = time.points)$y
+        extended_hazard_times <- c(0, baseline_hazard$time, max(baseline_hazard$time) * 10)
+        extended_hazard_probs <- c(0, baseline_hazard$hazard, 1)
+        baseline_hazard_at_times <- approx(extended_hazard_times, extended_hazard_probs, xout = time.points)$y
 
         ## Step 4: Compute survival probabilities for all individuals
         ## Survival probability is calculated as: exp(-baseline hazard * exp(linear predictor))
