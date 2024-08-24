@@ -81,6 +81,21 @@ if(setting==1) {
     cens_sigma_fun <- function(X) 0*X[,1] + 0.1
     censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
 
+} else if(setting==2) {
+    ## Initialize the covariate model
+    covariate_generator <- function(num_samples) {
+        num_features = 20
+        matrix(runif(num_samples * num_features, 0, 1), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
+    surv_mu_fun <- function(X) 0*X[,1] + X[,1]^0.25
+    surv_sigma_fun <- function(X) 0*X[,1] + 0.1
+    survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
+    ## Initialize the censoring time distribution
+    cens_mu_fun <- function(X) 0*X[,1] + 0.5 + 0.2
+    cens_sigma_fun <- function(X) 0*X[,1] + 0.1
+    censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
+    
 } else if(setting==3) {
     ## Initialize the covariate model
     covariate_generator <- function(num_samples) {

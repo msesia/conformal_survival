@@ -134,9 +134,9 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
         data.train.2 <- data.train[-train_indices.1, ]
         C.train.2 <- C.train[-train_indices.1]
         ## Fit the survival model on the training(1) data
-        surv_model_tune$fit(Surv(time, status) ~ ., data = data.train.1)
+        surv_model_tune$fit(survival::Surv(time, status) ~ ., data = data.train.1)
         ## Fit the censoring model on the training data
-        cens_model_tune$fit(Surv(time, 1-status) ~ ., data = data.train.1)
+        cens_model_tune$fit(survival::Surv(time, 1-status) ~ ., data = data.train.1)
         ## Simulate the lower bounds for different values of c0
         c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.1,0.9,by=0.1))))
         median.lb.candidates <- sapply(c0.candidates, function(c0) {
@@ -176,11 +176,6 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
     ## Compute conformal weights
     weights.cal <- 1/pmax(1e-6, cens_model$predict(data.cal[idx.keep,], time.points=c0)$predictions)
     weights.test <- 1/pmax(1e-6, cens_model$predict(data.test, time.points=c0)$predictions)
-    if(any(is.na(weights.cal))) {
-        print("Problem: NA weights!")
-        cat(sprintf("c0=%.4f\n", c0))
-        print(cens_model$predict(data.cal[idx.keep,], time.points=seq(0,c0,length.out=4)))
-    }
     ## Prediction for test data
     n <- length(scores.cal)
     n.test <- nrow(data.test)
