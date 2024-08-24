@@ -127,7 +127,7 @@ cens_model <- CensoringModel$new(model = cens_base_model)
 # Define function to analyze the data #
 #######################################
 
-analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model, generator=NULL, C.cal.oracle=NULL) {
+analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model, generator=NULL, C.train.oracle=NULL, C.cal.oracle=NULL) {
 
     # Fit the survival model on the training data
     surv_model$fit(survival::Surv(time, status) ~ ., data = data.train)
@@ -156,10 +156,18 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     # Apply CQR with de-censoring
     predictions$cqr.decensor <- predict_decensoring(data.test, surv_model, km_fit, data.cal, alpha, R=10)
 
+   
     if(!is.null(C.cal.oracle)) {
-        ## Apply Candes' method with "oracle" censoring model
+        ## Apply Candes' method with "oracle" censoring model (with fixed c0)        
         predictions$candes.oracle <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
 
+        ## Apply Candes' method with "oracle" censoring model (with fixed c0)
+        if(!is.null(C.train.oracle)) {
+            tuning.package <- list(data.train = data.train, C.train = C.train.oracle)
+            predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, 
+                                                              tuning.package=tuning.package)
+        }
+        
         ## Apply Gui's method with "oracle" censoring model
         predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
     }
@@ -186,6 +194,7 @@ run_experiment <- function(random.state) {
     data.train.oracle <- generator$sample(num_samples_train)
     data.cal.oracle <- generator$sample(num_samples_cal)
     data.test.oracle <- generator$sample(num_samples_test)
+    C.train.oracle <- data.train.oracle$censoring_time
     C.cal.oracle <- data.cal.oracle$censoring_time
 
     ## Remove true event and censoring times from the data (right-censoring)
@@ -194,7 +203,8 @@ run_experiment <- function(random.state) {
     data.test <- data.test.oracle |> select(-event_time, -censoring_time)
 
     ## Compute prediction lower bounds
-    predictions <- analyze_data(data.train, data.cal, data.test, surv_model, cens_model, generator=generator, C.cal.oracle=C.cal.oracle)
+    predictions <- analyze_data(data.train, data.cal, data.test, surv_model, cens_model, generator=generator,
+                                C.train.oracle=C.train.oracle, C.cal.oracle=C.cal.oracle)
 
     ## Evaluate results
     results <- do.call(rbind, lapply(names(predictions), function(name) {

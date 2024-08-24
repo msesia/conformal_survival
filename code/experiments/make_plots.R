@@ -54,7 +54,8 @@ methods.show <- c(1, 2, 3, 4, 5, 6, 7, 8)
 
 ## Plotting the data
 summary %>%
-    filter(metric != "Coverage (observed time)",
+    filter(setting==1,
+           metric != "Coverage (observed time)",
            Method %in% method.values[methods.show]) %>%
     mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
     ggplot(aes(x = n_train, y = value, color = Method, shape = Method)) +
