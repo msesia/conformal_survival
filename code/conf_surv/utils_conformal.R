@@ -6,7 +6,7 @@ evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=
     mean_lower_bound_cover <- NA
     median_lower_bound_cover <- NA
     if(!is.null(event_time)) {
-        coverage_event_time <- mean(lower_bound <= event_time) 
+        coverage_event_time <- mean(lower_bound <= event_time)
         idx.cover <- which(lower_bound <= event_time)
         if(length(idx.cover)>0) {
             mean_lower_bound_cover <- mean(lower_bound[idx.cover])
@@ -89,7 +89,7 @@ weighted_calibration <- function(scores.cal, weights.cal, weight.new, alpha) {
   # Combine the weights from calibration and new data
   weight <- c(weights.cal, weight.new)
   weight <- weight / sum(weight)  # Normalize weights to sum to 1
-    
+
 
   # Combine scores and append an infinity value for the new data
   score_vec <- c(scores.cal, Inf)
@@ -241,31 +241,46 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 }
 
 
-predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_censoring_model=FALSE) {
-   
-    # Which quantile to predict? 1-alpha is a reasonable choice,
-    # but in theory any other value can be used
-    probs <- seq(0.01, 0.99, by=0.01)
-    num_a <- length(probs)
+predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_cqr=FALSE, use_censoring_model=FALSE) {
 
-    # Extract the covariate information (remove 'time' and 'status' columns, if present)
-    ##X.cal <- data.cal |> select(-any_of(c("time", "status")))
-    ##X.test <- data.test |> select(-any_of(c("time", "status")))
+    ## Number of distinct values for tuning parameter alpha
+    num_a <- 200
+
     Y.cal <- data.cal$time
     num_cal <- nrow(data.cal)
+    num_test <- nrow(data.test)
+    
+    ## Construct sequences of predictions based on parameters a
 
-    ## Predict the survival quantiles for the given nominal percentiles
-    if(use_censoring_model) {
-        pred.T.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
-        pred.T.test <- pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift,0 )
-        beta = 1/pmax(1,log(num_cal))
-        pred.C.cal <- cens_model$predict_quantiles(data.cal, probs = 1-beta)[[1]]
-        pred.C.test <- cens_model$predict_quantiles(data.test, probs = 1-beta)[[1]]
-        pred.cal <- t(sapply(1:nrow(pred.T.cal), function(i) pmin(pred.T.cal[i, ], pred.C.cal[i])))
-        pred.test <- t(sapply(1:nrow(pred.T.test), function(i) pmin(pred.T.test[i, ], pred.C.test[i])))
+    if(!use_cqr) {
+        ## List of percentiles for estimated survival distribution
+        probs <- seq(0.01, 0.99, length.out=num_a)
+
+        ## Predict the survival quantiles for the given nominal percentiles
+        if(use_censoring_model) {
+            pred.T.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
+            pred.T.test <- pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift,0 )
+            beta = 1/pmax(1,log(num_cal))
+            pred.C.cal <- cens_model$predict_quantiles(data.cal, probs = 1-beta)[[1]]
+            pred.C.test <- cens_model$predict_quantiles(data.test, probs = 1-beta)[[1]]
+            pred.cal <- t(sapply(1:nrow(pred.T.cal), function(i) pmin(pred.T.cal[i, ], pred.C.cal[i])))
+            pred.test <- t(sapply(1:nrow(pred.T.test), function(i) pmin(pred.T.test[i, ], pred.C.test[i])))
+        } else {
+            pred.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
+            pred.test <- pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift, 0)
+        }
     } else {
-        pred.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
-        pred.test <- pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift, 0)
+        pred.cal.raw <- as.numeric(surv_model$predict_quantiles(data.cal, probs = alpha)[[1]])
+        max.shift <- max(pred.cal.raw)
+        #shifts <- rev(seq(0, max.shift, length.out=num_a))
+        shifts <- seq(0, 1, length.out=num_a)
+        shifts.mat <- matrix(shifts, num_cal, length(shifts), byrow = TRUE)
+        pred.cal.raw <- matrix(pred.cal.raw, nrow = length(pred.cal.raw), ncol = length(shifts))
+        pred.cal <- pmax(pred.cal.raw * shifts.mat, 0)
+        pred.test.raw <- as.numeric(surv_model$predict_quantiles(data.test, probs = alpha)[[1]])
+        pred.test.raw <- matrix(pred.test.raw, nrow = length(pred.test.raw), ncol = length(shifts))
+        shifts.mat <- matrix(shifts, num_test, length(shifts), byrow = TRUE)
+        pred.test <- pmax(pred.test.raw * shifts.mat, 0)
     }
 
     ## Compute the weights a function of a
@@ -286,11 +301,12 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
         return(out)
     }
     alpha_hat_values <- sapply(1:num_a, function(a) compute_alpha_hat(a))
-
-    # Find the smallest a such that alpha_hat(a) < alpha
+    alpha_hat_values <- cummax(alpha_hat_values)
+    
+    ## Find the smallest a such that alpha_hat(a) < alpha
     idx.valid <- which(alpha_hat_values<=alpha)
     if(length(idx.valid)>0) {
-        a.star <- min(idx.valid)
+        a.star <- max(idx.valid)
         ## Compute the prediction corresponding to a.star
         lower <- as.numeric(pred.test[,a.star])
     } else {
@@ -298,6 +314,6 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
         ## Be careful that in this case a.star may not lead to valid predictions
         lower <- as.numeric(pred.test[,a.star]) * 0
     }
-    
+
     return(lower)
 }
