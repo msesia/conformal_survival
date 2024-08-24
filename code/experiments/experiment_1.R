@@ -20,7 +20,7 @@ if(parse_input) {
     args <- commandArgs(trailingOnly = TRUE)
     
     ## Checking if the correct number of arguments is provided
-    if (length(args) < 7) {
+    if (length(args) < 9) {
         stop("Insufficient arguments provided. Expected 7 arguments.")
     }
     
@@ -29,9 +29,11 @@ if(parse_input) {
     setting <- as.integer(args[2])
     surv_model_type <- args[3]
     cens_model_type <- args[4]
-    num_samples_train <- as.integer(args[5])
-    num_samples_cal <- as.integer(args[6])
-    batch <- as.integer(args[7])
+    num_features <- as.integer(args[5])
+    num_samples_train <- as.integer(args[6])
+    num_samples_train_cens <- as.integer(args[7])
+    num_samples_cal <- as.integer(args[8])
+    batch <- as.integer(args[9])
 
 } else {
     setup <- 1
@@ -64,8 +66,10 @@ batch_size <- 10
 header <- tibble(setup = setup, 
                  setting = setting, 
                  surv_model_type = surv_model_type, 
-                 cens_model_type = cens_model_type, 
+                 cens_model_type = cens_model_type,
+                 n_features = num_features,
                  n_train = num_samples_train, 
+                 n_train_cens = num_samples_train_cens, 
                  n_cal = num_samples_cal, 
                  alpha = alpha, 
                  batch = batch)
@@ -74,8 +78,10 @@ header <- tibble(setup = setup,
 output_file <- paste0("results/setup_", setup, "/", 
                       "setting", setting, 
                       "_surv_", surv_model_type, 
-                      "_cens_", cens_model_type, 
+                      "_cens_", cens_model_type,
+                      "_feat", num_features,
                       "_train", num_samples_train, 
+                      "_trainc", num_samples_train_cens, 
                       "_cal", num_samples_cal, 
                       "_batch", batch, ".txt")
 
@@ -90,7 +96,6 @@ cat("Output file name:", output_file, "\n")
 if(setting==1) {
     ## Initialize the covariate model
     covariate_generator <- function(num_samples) {
-        num_features = 20
         matrix(runif(num_samples * num_features, 0, 1), nrow = num_samples)
     }
     ## Initialize the survival time distribution
@@ -105,7 +110,6 @@ if(setting==1) {
 } else if(setting==2) {
     ## Initialize the covariate model
     covariate_generator <- function(num_samples) {
-        num_features = 20
         matrix(runif(num_samples * num_features, 0, 1), nrow = num_samples)
     }
     ## Initialize the survival time distribution
@@ -120,7 +124,6 @@ if(setting==1) {
 } else if(setting==3) {
     ## Initialize the covariate model
     covariate_generator <- function(num_samples) {
-        num_features = 10
         matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
     }
     ## Initialize the survival time distribution
@@ -133,7 +136,6 @@ if(setting==1) {
 } else if(setting==4) {
     ## Initialize the covariate model
     covariate_generator <- function(num_samples) {
-        num_features = 10
         matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
     }
     ## Initialize the survival time distribution
@@ -187,8 +189,13 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     ## Fit the survival model on the training data
     surv_model$fit(survival::Surv(time, status) ~ ., data = data.train)
 
-    ## Fit the censoring model on the training data
-    cens_model$fit(data = data.train)
+    ## Fit the censoring model on a subset of the training data
+    if(num_samples_train_cens < num_samples_train) {
+        idx.train.cens <- sort(sample(1:nrow(data.train), num_samples_train_cens))
+    } else {
+        idx.train.cens <- 1:nrow(data.train)
+    }
+    cens_model$fit(data = data.train[idx.train.cens,])
 
     ## Fit the Kaplan-Meier survival model for the de-censoring method
     surv_object <- survival::Surv(time = data.train$time, event = data.train$status)
