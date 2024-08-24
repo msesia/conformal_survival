@@ -66,26 +66,45 @@ cat("Output file name:", output_file, "\n")
 # Define data distribution #
 ############################
 
-# Initialize the covariate model
-covariate_generator <- function(num_samples) {
-    num_features = 10
-    matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
-}
+if(setting==1) {
+    ## Initialize the covariate model
+    covariate_generator <- function(num_samples) {
+        num_features = 20
+        matrix(runif(num_samples * num_features, 0, 1), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
+    surv_mu_fun <- function(X) 0*X[,1] + X[,1]^0.25
+    surv_sigma_fun <- function(X) 0*X[,1] + 0.1
+    survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
+    ## Initialize the censoring time distribution
+    cens_mu_fun <- function(X) 0*X[,1] + X[,1] + 0.2
+    cens_sigma_fun <- function(X) 0*X[,1] + 0.1
+    censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
 
-if(setting==3) {
-    # Initialize the survival time distribution
+} else if(setting==3) {
+    ## Initialize the covariate model
+    covariate_generator <- function(num_samples) {
+        num_features = 10
+        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
     surv_mu_fun <- function(X) 0*X[,1] + 2 * (X[,1]>2) + X[,1] * (X[,1]<2)
     surv_sigma_fun <- function(X) 0*X[,1] + 0.5
     survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
-    # Initialize the censoring time distribution
+    ## Initialize the censoring time distribution
     cens_rate_fun <- function(X) 0*X[,1] + 0.25 + (6+X[,1])/100
     censoring_generator <- ExponentialDistribution$new(rate_fun = cens_rate_fun)
 } else if(setting==4) {
-    # Initialize the survival time distribution
+    ## Initialize the covariate model
+    covariate_generator <- function(num_samples) {
+        num_features = 10
+        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
     surv_mu_fun <- function(X) 0*X[,1] + 3 * (X[,1]>2) + 1.5 * X[,1] * (X[,1]<2)
     surv_sigma_fun <- function(X) 0*X[,1] + 0.5
     survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
-    # Initialize the censoring time distribution
+    ## Initialize the censoring time distribution
     cens_mu_fun <- function(X) 0*X[,1] + 2 + (2-X[,1])/50
     cens_sigma_fun <- function(X) 0*X[,1] + 0.5
     censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
