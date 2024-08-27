@@ -232,6 +232,9 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
 
         ## Apply Gui's method with "oracle" censoring model
         predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
+
+        ## Apply Gui's method with "oracle" censoring model, with CQR approach
+        predictions$gui.oracle.cqr <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=TRUE)
     }
 
     ## Apply prototype (Candes, with fixed c0)
@@ -244,6 +247,9 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     ## Apply prototype (Gui)
     predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive")
 
+    ## Apply prototype (Gui, CQR)
+    predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive-cqr")
+    
 
     return(predictions)
 }

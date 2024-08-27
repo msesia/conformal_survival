@@ -217,6 +217,9 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
     if(cutoffs=="adaptive") {
         ## Apply Gui's method using the imputed censoring times
         out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha)
+    } else if(cutoffs=="adaptive-cqr") {
+        ## Apply Gui's method using the imputed censoring times
+        out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, use_cqr=TRUE)
     } else if (cutoffs=="candes-fixed") {
         ## Apply Candes' method using the imputed censoring times
         out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, c0=c0)
@@ -241,7 +244,8 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 }
 
 
-predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_cqr=FALSE, use_censoring_model=FALSE) {
+predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_cqr=FALSE, use_censoring_model=FALSE,
+                        finite_sample_correction = FALSE) {
 
     ## Number of distinct values for tuning parameter alpha
     num_a <- 200
@@ -249,7 +253,7 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
     Y.cal <- data.cal$time
     num_cal <- nrow(data.cal)
     num_test <- nrow(data.test)
-    
+
     ## Construct sequences of predictions based on parameters a
 
     if(!use_cqr) {
@@ -302,9 +306,14 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
     }
     alpha_hat_values <- sapply(1:num_a, function(a) compute_alpha_hat(a))
     alpha_hat_values <- cummax(alpha_hat_values)
-    
+
     ## Find the smallest a such that alpha_hat(a) < alpha
-    idx.valid <- which(alpha_hat_values<=alpha)
+    if(finite_sample_correction) {
+        alpha_adjusted <- pmax(0, alpha - (1-alpha)/num_cal)
+    } else {
+        alpha_adjusted <- alpha
+    }
+    idx.valid <- which(alpha_hat_values<=alpha_adjusted)
     if(length(idx.valid)>0) {
         a.star <- max(idx.valid)
         ## Compute the prediction corresponding to a.star
