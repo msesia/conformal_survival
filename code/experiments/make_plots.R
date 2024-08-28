@@ -22,7 +22,9 @@ method_colors <- c(
   "Candes (prototype)" = "lightblue",
   "Candes (prototype, tuned)" = "cadetblue",
   "Gui et al. (oracle)" = "darkgreen",
-  "Gui et al. (prototype)" = "green"
+  "Gui et al. (oracle, cqr)" = "darkgreen",
+  "Gui et al. (prototype)" = "green",
+  "Gui et al. (prototype, cqr)" = "green"
 )
 
 # Custom shape mapping (optional)
@@ -36,46 +38,50 @@ method_shapes <- c(
   "Candes (prototype)" = 18, # Diamond
   "Candes (prototype, tuned)" = 18, # Diamond
   "Gui et al. (oracle)" = 19, # Filled circle
-  "Gui et al. (prototype)" = 18 # Diamond (same as Candes prototype)
+  "Gui et al. (oracle, cqr)" = 15, # Square
+  "Gui et al. (prototype)" = 18, # Diamond (same as Candes prototype)
+  "Gui et al. (prototype, cqr)" = 15 # Square
 )
 
-results <- load_data(1)
-
-summary <- results %>%
-    pivot_longer(c("Coverage (observed time)", "Mean lower bound", "Median lower bound", "Mean lower bound (cover)", "Median lower bound (cover)",
-                   "Coverage (event time)", "Oracle MSE"),
-                 names_to="metric", values_to="value") %>%
-    group_by(setup, setting, n_train, n_cal, alpha, Method, metric) %>%
-    summarise(SE = sd(value)/sqrt(n()), value=mean(value))
-
-method.values <- c("oracle", "nominal", "cqr", "cqr.decensor", "candes.oracle", "candes.oracle.tuned",
-                   "prototype.candes", "prototype.candes.tuned", "gui.oracle", "prototype.gui")
-method.labels <- c("Oracle", "Nominal", "CQR", "Qi et al.", "Candes (oracle)", "Candes (oracle, tuned)", "Candes (prototype)", "Candes (prototype, tuned)",
-                   "Gui et al. (oracle)", "Gui et al. (prototype)")
+method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
+                   "candes.oracle", "candes.oracle.tuned", "prototype.candes", "prototype.candes.tuned",
+                   "gui.oracle", "gui.oracle.cqr", "prototype.gui", "prototype.gui.cqr")
+method.labels <- c("Oracle", "Nominal", "CQR", "Qi et al.",
+                   "Candes (oracle)", "Candes (oracle, tuned)", "Candes (prototype)", "Candes (prototype, tuned)",
+                   "Gui et al. (oracle)", "Gui et al. (oracle, cqr)", "Gui et al. (prototype)", "Gui et al. (prototype, cqr)")
 
 
 methods.show <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
-#methods.show <- c(1, 2, 3, 4, 6, 8)
-
-## Plotting the data
-summary %>%
-    filter(setting==1,
-           metric != "Coverage (observed time)",
-           Method %in% method.values[methods.show]) %>%
-    mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
-    ggplot(aes(x = n_train, y = value, color = Method, shape = Method)) +
-    geom_point(alpha=0.5) +
-    geom_line(alpha=0.5) +
-    geom_errorbar(aes(ymin = value - SE, ymax = value + SE), width = 0.2) +
-    facet_wrap(metric ~ ., scales = "free", nrow=1) +
-    scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
-    scale_shape_manual(values = method_shapes) + # Apply custom shape scale (optional)
-    geom_hline(data = summary %>% filter(metric=="Coverage (event time)"), aes(yintercept = 0.9), linetype = "dashed") +
-    scale_x_log10() +
-    theme_bw()
 
 
+make_plot <- function() {
+    summary <- results %>%
+        pivot_longer(c("Coverage (observed time)", "Mean lower bound", "Median lower bound", "Mean lower bound (cover)", "Median lower bound (cover)",
+                       "Coverage (event time)", "Oracle MSE"),
+                     names_to="metric", values_to="value") %>%
+        group_by(setup, setting, n_train, n_cal, alpha, Method, metric) %>%
+        summarise(SE = sd(value)/sqrt(n()), value=mean(value))
+    ## Plotting the data
+    summary %>%
+        filter(setting==1, n_cal==100, metric != "Coverage (observed time)") %>%
+        ##    filter(Method %in% method.values[methods.show]) %>%
+        mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
+        ggplot(aes(x = n_train, y = value, color = Method, shape = Method)) +
+        geom_point(alpha=0.5) +
+        geom_line(alpha=0.5) +
+        geom_errorbar(aes(ymin = value - SE, ymax = value + SE), width = 0.2) +
+        facet_wrap(metric ~ ., scales = "free", nrow=1) +
+        scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
+        scale_shape_manual(values = method_shapes) + # Apply custom shape scale (optional)
+        geom_hline(data = summary %>% filter(metric=="Coverage (event time)"), aes(yintercept = 0.9), linetype = "dashed") +
+        scale_x_log10() +
+        theme_bw()
+
+}
+
+results <- load_data(1)
+make_plot()
 
 
 ## init_settings <- function(idx.exclude=NULL, names_ACODE=FALSE) {

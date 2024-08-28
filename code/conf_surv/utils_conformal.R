@@ -128,22 +128,35 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
         cens_model_tune <- cens_model$clone(deep = TRUE)
         C.train = tuning.package$C.train
 
-        ## Split the training data into two subsets
-        train_indices.1 <- sample(1:nrow(data.train), size = 0.5 * nrow(data.train))
-        data.train.1 <- data.train[train_indices.1, ]
-        data.train.2 <- data.train[-train_indices.1, ]
-        C.train.2 <- C.train[-train_indices.1]
-        ## Fit the survival model on the training(1) data
-        surv_model_tune$fit(survival::Surv(time, status) ~ ., data = data.train.1)
-        ## Fit the censoring model on the training data
-        cens_model_tune$fit(survival::Surv(time, 1-status) ~ ., data = data.train.1)
         ## Simulate the lower bounds for different values of c0
-        c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.1,0.9,by=0.1))))
-        median.lb.candidates <- sapply(c0.candidates, function(c0) {
-            lower.tune <- predict_Candes(data.test, surv_model_tune, cens_model_tune, data.train.2, C.train.2, alpha, c0=c0)
-            return(median(lower.tune))
-        })
-        c0 <- c0.candidates[which.max(median.lb.candidates)]
+        c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.05,0.95,by=0.05))))
+
+        ## Use bootstrap to make this more stable
+        B = 10
+        lb.candidates.boot <- do.call(rbind, lapply(1:B, function(i) {
+            ## Split the training data into two subsets
+            train_indices.1 <- sample(1:nrow(data.train), size = 0.5 * nrow(data.train))
+            data.train.1 <- data.train[train_indices.1, ]
+            data.train.2 <- data.train[-train_indices.1, ]
+            C.train.2 <- C.train[-train_indices.1]
+            ## Fit the survival model on the training(1) data
+            surv_model_tune$fit(survival::Surv(time, status) ~ ., data = data.train.1)
+            ## Fit the censoring model on the training data
+            cens_model_tune$fit(survival::Surv(time, 1-status) ~ ., data = data.train.1)
+            median.lb.candidates <- sapply(c0.candidates, function(c0) {
+                lower.tune <- predict_Candes(data.test, surv_model_tune, cens_model_tune, data.train.2, C.train.2, alpha, c0=c0)
+                return(median(lower.tune))
+            })
+        }))
+        lb.candidates <- colMeans(lb.candidates.boot)
+        ##idx.selected <- which.max(lb.candidates)
+        idx.selected <- which(diff(lb.candidates) < 0)[1]
+        if(length(idx.selected)>0) {
+            c0 <- c0.candidates[idx.selected]
+        } else {
+            c0 <- c0.candidates[1]
+        }
+        return(c0)
     }
 
     if((is.null(c0)) && (!is.null(tuning.package))) {
