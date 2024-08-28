@@ -103,7 +103,7 @@ if(setting==1) {
     surv_sigma_fun <- function(X) 0*X[,1] + 0.1
     survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
     ## Initialize the censoring time distribution
-    cens_mu_fun <- function(X) 0*X[,1] + X[,1] + 0.2
+    cens_mu_fun <- function(X) 0*X[,1] + X[,1]^4 + 0.4
     cens_sigma_fun <- function(X) 0*X[,1] + 0.1
     censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
 
@@ -248,7 +248,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive")
 
     ## Apply prototype (Gui, CQR)
-    predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive-cqr")
+    predictions$prototype.gui.cqr <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive-cqr")
     
 
     return(predictions)

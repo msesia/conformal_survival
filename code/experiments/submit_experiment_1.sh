@@ -13,13 +13,13 @@ if [[ $SETUP == 1 ]]; then
   # List of numbers of features
   N_FEAT_LIST=(20)
   # List of training sample sizes
-  N_TRAIN_LIST=(1000)
+  N_TRAIN_LIST=(200 500 1000 2000)
   # List of censoring training sample sizes
   N_TRAIN_CENS_LIST=(100)
   # List of calibration sample sizes
-  N_CAL_LIST=(500)
+  N_CAL_LIST=(100 200 500)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 1)
+  BATCH_LIST=$(seq 1 5)
 
   MEMO=5G
 fi

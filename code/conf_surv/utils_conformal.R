@@ -245,7 +245,7 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 
 
 predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_cqr=FALSE, use_censoring_model=FALSE,
-                        finite_sample_correction = FALSE) {
+                        finite_sample_correction = TRUE) {
 
     ## Number of distinct values for tuning parameter alpha
     num_a <- 200
@@ -309,7 +309,8 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
 
     ## Find the smallest a such that alpha_hat(a) < alpha
     if(finite_sample_correction) {
-        alpha_adjusted <- pmax(0, alpha - (1-alpha)/num_cal)
+        alpha_adjusted <- alpha - (1-alpha)/num_cal - (1) / sqrt(num_cal)
+        alpha_adjusted <- pmax(0, alpha_adjusted)
     } else {
         alpha_adjusted <- alpha
     }
