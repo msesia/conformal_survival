@@ -17,9 +17,9 @@ if [[ $SETUP == 1 ]]; then
   # List of censoring training sample sizes
   N_TRAIN_CENS_LIST=(100)
   # List of calibration sample sizes
-  N_CAL_LIST=(100 200 500)
+  N_CAL_LIST=(200)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 5)
+  BATCH_LIST=$(seq 1 20)
 
   MEMO=5G
 fi
