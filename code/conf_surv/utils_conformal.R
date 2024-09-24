@@ -129,26 +129,35 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
         C.train = tuning.package$C.train
 
         ## Simulate the lower bounds for different values of c0
-        c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.05,0.95,by=0.05))))
+        c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.1,0.95,by=0.01))))
 
-        ## Use bootstrap to make this more stable
-        B = 10
-        lb.candidates.boot <- do.call(rbind, lapply(1:B, function(i) {
-            ## Split the training data into two subsets
-            train_indices.1 <- sample(1:nrow(data.train), size = 0.5 * nrow(data.train))
-            data.train.1 <- data.train[train_indices.1, ]
-            data.train.2 <- data.train[-train_indices.1, ]
-            C.train.2 <- C.train[-train_indices.1]
-            ## Fit the survival model on the training(1) data
-            surv_model_tune$fit(survival::Surv(time, status) ~ ., data = data.train.1)
-            ## Fit the censoring model on the training data
-            cens_model_tune$fit(survival::Surv(time, 1-status) ~ ., data = data.train.1)
-            median.lb.candidates <- sapply(c0.candidates, function(c0) {
+        ## Split the training data into two subsets
+        train_indices.1 <- sample(1:nrow(data.train), size = 0.5 * nrow(data.train))
+        data.train.1 <- data.train[train_indices.1, ]
+        data.train.2 <- data.train[-train_indices.1, ]
+        C.train.2 <- C.train[-train_indices.1]
+        ## Fit the survival model on the training(1) data
+        surv_model_tune$fit(survival::Surv(time, status) ~ ., data = data.train.1)
+        ## Fit the censoring model on the training data
+        cens_model_tune$fit(survival::Surv(time, 1-status) ~ ., data = data.train.1)
+        if(FALSE) {
+            ## Use bootstrap to make this more stable        
+            B = 10
+            lb.candidates.boot <- do.call(rbind, lapply(1:B, function(i) {
+                idx.test <- sample(nrow(data.test), 10, replace=TRUE)
+                idx.cal <- sample(nrow(data.train.2), nrow(data.train.2), replace=TRUE)
+                median.lb.candidates <- sapply(c0.candidates, function(c0) {
+                    lower.tune <- predict_Candes(data.test[idx.test,], surv_model_tune, cens_model_tune, data.train.2[idx.cal,], C.train.2[idx.cal], alpha, c0=c0)
+                    return(median(lower.tune))
+                })
+            }))
+            lb.candidates <- colMeans(lb.candidates.boot)
+        } else {
+            lb.candidates <- sapply(c0.candidates, function(c0) {
                 lower.tune <- predict_Candes(data.test, surv_model_tune, cens_model_tune, data.train.2, C.train.2, alpha, c0=c0)
                 return(median(lower.tune))
             })
-        }))
-        lb.candidates <- colMeans(lb.candidates.boot)
+        }
         ##idx.selected <- which.max(lb.candidates)
         idx.selected <- which(diff(lb.candidates) < 0)[1]
         if(length(idx.selected)>0) {
@@ -156,6 +165,7 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
         } else {
             c0 <- c0.candidates[1]
         }
+        plot(c0.candidates, lb.candidates)
         return(c0)
     }
 
@@ -167,6 +177,7 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
             c0 <- median(C.cal)
         }
     }
+
 
     # Extract the covariate information (remove 'time' and 'status' columns, if present)
     ##X.cal <- data.cal |> select(-any_of(c("time", "status")))

@@ -55,7 +55,7 @@ methods.show <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
 
 
-make_plot <- function() {
+make_plot <- function(plot_n_cal=500) {
     summary <- results %>%
         pivot_longer(c("Coverage (observed time)", "Mean lower bound", "Median lower bound", "Mean lower bound (cover)", "Median lower bound (cover)",
                        "Coverage (event time)", "Oracle MSE"),
@@ -64,7 +64,7 @@ make_plot <- function() {
         summarise(SE = sd(value)/sqrt(n()), value=mean(value))
     ## Plotting the data
     summary %>%
-        filter(setting==1, n_cal==100, metric != "Coverage (observed time)") %>%
+        filter(setting==1, n_cal==plot_n_cal, metric != "Coverage (observed time)") %>%
         ##    filter(Method %in% method.values[methods.show]) %>%
         mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
         ggplot(aes(x = n_train, y = value, color = Method, shape = Method)) +
@@ -81,7 +81,7 @@ make_plot <- function() {
 }
 
 results <- load_data(1)
-make_plot()
+make_plot(plot_n_cal=200)
 
 
 ## init_settings <- function(idx.exclude=NULL, names_ACODE=FALSE) {

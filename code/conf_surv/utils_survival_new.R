@@ -280,7 +280,8 @@ GRF_SurvivalForestWrapper <- R6::R6Class("GRF_SurvivalForestWrapper",
       # Fit the survival forest model
       self$model <- grf::survival_forest(parsed_data$covariates,
                                          Y = parsed_data$time,
-                                         D = parsed_data$status)
+                                         D = parsed_data$status,
+                                         num.trees = 100)
       self$time.points <- self$model$failure.times  # Extract the default failure times
     },
 
