@@ -129,55 +129,62 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
         C.train = tuning.package$C.train
 
         ## Simulate the lower bounds for different values of c0
-        c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.1,0.95,by=0.01))))
+        c0.candidates <- as.numeric(quantile(C.cal, c(seq(0.05,0.95,by=0.05))))
 
-        ## Split the training data into two subsets
-        train_indices.1 <- sample(1:nrow(data.train), size = 0.5 * nrow(data.train))
-        data.train.1 <- data.train[train_indices.1, ]
-        data.train.2 <- data.train[-train_indices.1, ]
-        C.train.2 <- C.train[-train_indices.1]
-        ## Fit the survival model on the training(1) data
-        surv_model_tune$fit(survival::Surv(time, status) ~ ., data = data.train.1)
-        ## Fit the censoring model on the training data
-        cens_model_tune$fit(survival::Surv(time, 1-status) ~ ., data = data.train.1)
-        if(FALSE) {
-            ## Use bootstrap to make this more stable        
-            B = 10
-            lb.candidates.boot <- do.call(rbind, lapply(1:B, function(i) {
-                idx.test <- sample(nrow(data.test), 10, replace=TRUE)
-                idx.cal <- sample(nrow(data.train.2), nrow(data.train.2), replace=TRUE)
-                median.lb.candidates <- sapply(c0.candidates, function(c0) {
-                    lower.tune <- predict_Candes(data.test[idx.test,], surv_model_tune, cens_model_tune, data.train.2[idx.cal,], C.train.2[idx.cal], alpha, c0=c0)
-                    return(median(lower.tune))
-                })
-            }))
-            lb.candidates <- colMeans(lb.candidates.boot)
-        } else {
+        greedy.calibration <- TRUE
+
+        if(greedy.calibration) {
             lb.candidates <- sapply(c0.candidates, function(c0) {
-                lower.tune <- predict_Candes(data.test, surv_model_tune, cens_model_tune, data.train.2, C.train.2, alpha, c0=c0)
+                lower.tune <- predict_Candes(data.test, surv_model_tune, cens_model_tune, data.cal, C.cal, alpha, c0=c0)
                 return(median(lower.tune))
             })
+        } else {            
+            ## Split the training data into two subsets
+            train_indices.1 <- sample(1:nrow(data.train), size = 0.5 * nrow(data.train))
+            data.train.1 <- data.train[train_indices.1, ]
+            data.train.2 <- data.train[-train_indices.1, ]
+            C.train.2 <- C.train[-train_indices.1]
+            ## Fit the survival model on the training(1) data
+            surv_model_tune$fit(survival::Surv(time, status) ~ ., data = data.train.1)
+            ## Fit the censoring model on the training data
+            cens_model_tune$fit(survival::Surv(time, 1-status) ~ ., data = data.train.1)
+            if(FALSE) {
+                ## Use bootstrap to make this more stable        
+                B = 10
+                lb.candidates.boot <- do.call(rbind, lapply(1:B, function(i) {
+                    idx.test <- sample(nrow(data.test), 10, replace=TRUE)
+                    idx.cal <- sample(nrow(data.train.2), nrow(data.train.2), replace=TRUE)
+                    median.lb.candidates <- sapply(c0.candidates, function(c0) {
+                        lower.tune <- predict_Candes(data.test[idx.test,], surv_model_tune, cens_model_tune, data.train.2[idx.cal,], C.train.2[idx.cal], alpha, c0=c0)
+                        return(median(lower.tune))
+                    })
+                }))
+                lb.candidates <- colMeans(lb.candidates.boot)
+            } else {
+                lb.candidates <- sapply(c0.candidates, function(c0) {
+                    lower.tune <- predict_Candes(data.test, surv_model_tune, cens_model_tune, data.train.2, C.train.2, alpha, c0=c0)
+                    return(median(lower.tune))
+                })
+            }
         }
-        ##idx.selected <- which.max(lb.candidates)
         idx.selected <- which(diff(lb.candidates) < 0)[1]
         if(length(idx.selected)>0) {
             c0 <- c0.candidates[idx.selected]
         } else {
             c0 <- c0.candidates[1]
         }
-        plot(c0.candidates, lb.candidates)
         return(c0)
     }
 
     if((is.null(c0)) && (!is.null(tuning.package))) {
         c0 <- tune.c0(tuning.package)
+        cat(sprintf("Tuned c0 = %.3f\n", c0))
     } else {
         ## Choose c0 if not supplied
         if(is.null(c0)) {
-            c0 <- median(C.cal)
+            c0 <- quantile(C.cal, 0.5)
         }
-    }
-
+    }    
 
     # Extract the covariate information (remove 'time' and 'status' columns, if present)
     ##X.cal <- data.cal |> select(-any_of(c("time", "status")))
@@ -186,7 +193,6 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 
     ## Remove calibration points with small censoring
     idx.keep <- which(C.cal >= c0)
-
     ## Compute the conformity scores for the calibration data
 
     ## Predict the survival quantiles for the given nominal percentile
@@ -213,10 +219,10 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
         calibration <- weighted_calibration(scores.cal, weights.cal, weights.test[i], alpha)
 
         ## Compute the calibrated lower bounds (don't go below 0)
-        lower <- pmin(c0, pmax(0, pred.test[i] - calibration))
+        lower <- pmin(c0, pmax(0, pmin(pred.test[i] - calibration, c0)))
         return(lower)
     })
-
+    
     return(lower.test)
 }
 

@@ -73,6 +73,7 @@ header <- tibble(setup = setup,
                  n_cal = num_samples_cal, 
                  alpha = alpha, 
                  batch = batch)
+print(header)
 
 ## Generate a unique and interpretable file name based on the input parameters
 output_file <- paste0("results/setup_", setup, "/", 
@@ -220,14 +221,14 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
 
     if(!is.null(C.cal.oracle)) {
         ## Apply Candes' method with "oracle" censoring model (with fixed c0)
-        predictions$candes.oracle <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
+        ## predictions$candes.oracle <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
 
-        ## ## Apply Candes' method with "oracle" censoring model (with fixed c0)
-        ## if(!is.null(C.train.oracle)) {
-        ##     tuning.package.oracle <- list(data.train = data.train, C.train = C.train.oracle)
-        ##     predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha,
-        ##                                                       tuning.package=tuning.package.oracle)
-        ## }
+        ## Apply Candes' method with "oracle" censoring model (with fixed c0)
+        if(!is.null(C.train.oracle)) {
+            tuning.package.oracle <- list(data.train = data.train, C.train = C.train.oracle)
+            predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha,
+                                                              tuning.package=tuning.package.oracle)
+        }
 
         ## Apply Gui's method with "oracle" censoring model
         predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)

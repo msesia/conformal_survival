@@ -19,7 +19,7 @@ if [[ $SETUP == 1 ]]; then
   # List of calibration sample sizes
   N_CAL_LIST=(200)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 20)
+  BATCH_LIST=$(seq 1 1)
 
   MEMO=5G
 fi

@@ -65,7 +65,7 @@ make_plot <- function(plot_n_cal=500) {
     ## Plotting the data
     summary %>%
         filter(setting==1, n_cal==plot_n_cal, metric != "Coverage (observed time)") %>%
-        ##    filter(Method %in% method.values[methods.show]) %>%
+        filter(Method %in% c("nominal", "cqr", "cqr.decensor", "candes.oracle", "gui.oracle")) %>%
         mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
         ggplot(aes(x = n_train, y = value, color = Method, shape = Method)) +
         geom_point(alpha=0.5) +
