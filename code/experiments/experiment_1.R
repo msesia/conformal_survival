@@ -221,14 +221,14 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
 
     if(!is.null(C.cal.oracle)) {
         ## Apply Candes' method with "oracle" censoring model (with fixed c0)
-        ## predictions$candes.oracle <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
+        predictions$candes.oracle <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
 
-        ## Apply Candes' method with "oracle" censoring model (with fixed c0)
-        if(!is.null(C.train.oracle)) {
-            tuning.package.oracle <- list(data.train = data.train, C.train = C.train.oracle)
-            predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha,
-                                                              tuning.package=tuning.package.oracle)
-        }
+        ## ## Apply Candes' method with "oracle" censoring model (with fixed c0)
+        ## if(!is.null(C.train.oracle)) {
+        ##     tuning.package.oracle <- list(data.train = data.train, C.train = C.train.oracle)
+        ##     predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha,
+        ##                                                       tuning.package=tuning.package.oracle)
+        ## }
 
         ## Apply Gui's method with "oracle" censoring model
         predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
@@ -240,7 +240,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     ## Apply prototype (Candes, with fixed c0)
     predictions$prototype.candes <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="candes-fixed")
 
-    ## ## Apply prototype (Candes, with tuned c0)
+    ## ## ## Apply prototype (Candes, with tuned c0)
     ## tuning.package <- list(data.train = data.train)
     ## predictions$prototype.candes.tuned <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, tuning.package=tuning.package, cutoffs="candes-tuning")
 

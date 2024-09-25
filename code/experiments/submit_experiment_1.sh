@@ -5,21 +5,21 @@ SETUP=1
 
 if [[ $SETUP == 1 ]]; then
   # Data distribution setting
-  SETTING_LIST=(1)
+  SETTING_LIST=(1 2 3 4)
   # Survival model types
-  SURV_MODEL_TYPE_LIST=("grf") #  "cox"
+  SURV_MODEL_TYPE_LIST=("cox") # "grf" "cox"
   # Censoring model types
-  CENS_MODEL_TYPE_LIST=("grf") #  "cox"
+  CENS_MODEL_TYPE_LIST=("cox") # "grf" "cox"
   # List of numbers of features
   N_FEAT_LIST=(20)
   # List of training sample sizes
-  N_TRAIN_LIST=(200 500 1000 2000)
+  N_TRAIN_LIST=(1500)
   # List of censoring training sample sizes
-  N_TRAIN_CENS_LIST=(100)
+  N_TRAIN_CENS_LIST=(1500)
   # List of calibration sample sizes
-  N_CAL_LIST=(200)
+  N_CAL_LIST=(1500)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 1)
+  BATCH_LIST=$(seq 1 10)
 
   MEMO=5G
 fi
