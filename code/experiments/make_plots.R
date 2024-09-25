@@ -15,17 +15,63 @@ load_data <- function(setup) {
 method_colors <- c(
   "Oracle" = "black",
   "Nominal" = "grey",
-  "CQR" = "orange",
-  "Qi et al." = "red",
-  "Candes (oracle)" = "darkblue",
-  "Candes (oracle, tuned)" = "blue",
-  "Candes (prototype)" = "lightblue",
-  "Candes (prototype, tuned)" = "cadetblue",
-  "Gui et al. (oracle)" = "darkgreen",
-  "Gui et al. (oracle, cqr)" = "darkgreen",
-  "Gui et al. (prototype)" = "green",
-  "Gui et al. (prototype, cqr)" = "green"
+  "Naive CQR" = "orchid1",
+  "Qi et al." = "tan2",
+  "Prototype (Candes, oracle censoring model)" = "blue",
+  "Prototype (Candes)" = "blue4",
+  "Prototype (Gui et al., oracle censoring model)" = "green",
+  "Prototype (Gui et al.)" = "green4"
 )
+
+method.values <- c("nominal", "cqr.decensor", "cqr", 
+#                   "candes.oracle",
+                   "prototype.candes",
+#                   "gui.oracle",
+                   "prototype.gui",
+                   "oracle"
+                   )
+
+method.labels <- c("Nominal", "Qi et al.", "Naive CQR", 
+#                   "Prototype (Candes, oracle)",
+                   "Prototype (Candes)",
+#                   "Prototype (Gui et al., oracle)",
+                   "Prototype (Gui et al.)",
+                   "Oracle"
+                   )
+
+
+make_boxplot <- function(plot_setting=1, plot_model="grf", plot_n_train=500, plot_n_cal=500) {
+    summary <- results %>%
+        filter(setting==plot_setting, surv_model_type==plot_model, cens_model_type==plot_model, n_train==plot_n_train, n_cal==plot_n_cal) %>%
+        pivot_longer(c("Coverage (event time)", "Mean lower bound"), names_to="metric", values_to="value") %>%
+        mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
+        filter(Method %in% method.values) %>%
+        mutate(Method = fct_rev(factor(Method, levels = method.values, labels = method.labels)))
+    df.limits <- tibble(metric=c("Coverage","Coverage", "Lower Bound"), value=c(0,1,0), Method="Oracle")
+    ## Plotting the data
+    pp <- summary %>%
+        ggplot(aes(y = Method, x = value, color=Method)) +
+        geom_boxplot() +
+        facet_grid(.~metric, scales = "free") +
+        scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
+        geom_vline(data = summary %>% filter(metric=="Coverage"), aes(xintercept = 0.9), linetype = "dashed", color="red") +
+        geom_point(data=df.limits, alpha=0) +
+        xlab("") +
+        theme_bw() +
+        theme(legend.position = "none")
+    ggsave(sprintf("figures/experiments_boxplots_setting%d_%s_n%d_n%d.png",
+                   plot_setting, plot_model, plot_n_train, plot_n_cal), plot = pp, width = 6, height = 2.5, units = "in")
+}
+
+results <- load_data(1)
+
+for(pps in 1:4) {
+##    make_boxplot(plot_setting=pps, plot_n_train=500, plot_n_cal=500)
+    make_boxplot(plot_setting=pps, plot_model="cox", plot_n_train=1500, plot_n_cal=1500)
+    make_boxplot(plot_setting=pps, plot_model="grf", plot_n_train=1500, plot_n_cal=1500)
+}
+
+
 
 # Custom shape mapping (optional)
 method_shapes <- c(
@@ -43,19 +89,8 @@ method_shapes <- c(
   "Gui et al. (prototype, cqr)" = 15 # Square
 )
 
-method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
-                   "candes.oracle", "candes.oracle.tuned", "prototype.candes", "prototype.candes.tuned",
-                   "gui.oracle", "gui.oracle.cqr", "prototype.gui", "prototype.gui.cqr")
-method.labels <- c("Oracle", "Nominal", "CQR", "Qi et al.",
-                   "Candes (oracle)", "Candes (oracle, tuned)", "Candes (prototype)", "Candes (prototype, tuned)",
-                   "Gui et al. (oracle)", "Gui et al. (oracle, cqr)", "Gui et al. (prototype)", "Gui et al. (prototype, cqr)")
 
-
-methods.show <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-
-
-
-make_plot <- function(plot_n_cal=500) {
+make_plot_vs_n <- function(plot_n_cal=500) {
     summary <- results %>%
         pivot_longer(c("Coverage (observed time)", "Mean lower bound", "Median lower bound", "Mean lower bound (cover)", "Median lower bound (cover)",
                        "Coverage (event time)", "Oracle MSE"),
@@ -80,8 +115,7 @@ make_plot <- function(plot_n_cal=500) {
 
 }
 
-results <- load_data(1)
-make_plot(plot_n_cal=200)
+make_plot_vs_n(plot_n_cal=200)
 
 
 ## init_settings <- function(idx.exclude=NULL, names_ACODE=FALSE) {
