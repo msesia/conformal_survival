@@ -22,6 +22,29 @@ ensure_matrix <- function(new_data) {
   return(new_data)
 }
 
+# Function to interpolate survival probability at specific time points using monotone interpolation
+get_survival_prob_at_time <- function(pred, time_points) {
+  # Extract the survival times and survival probabilities from the prediction object
+  times <- pred$time.interest
+  survival_probs <- pred$survival
+  
+  # Initialize a matrix to hold the interpolated probabilities
+  num_individuals <- nrow(survival_probs)
+  num_time_points <- length(time_points)
+  interpolated_probs <- matrix(NA, nrow = num_individuals, ncol = num_time_points)
+  
+  # Perform monotone interpolation using PCHIP for each individual and each time point
+  for (i in 1:num_individuals) {
+    # Create the monotone interpolation function for the current individual
+    interp_function <- splinefun(x = times, y = survival_probs[i, ], method = "monoH.FC")
+    
+    # Interpolate at each time point and ensure the probabilities are within [0, 1]
+    interpolated_probs[i, ] <- pmin(pmax(interp_function(time_points), 0), 1)
+  }
+  
+  return(interpolated_probs)
+}
+
 
 SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
   public = list(
@@ -337,20 +360,19 @@ randomForestSRC_SurvivalWrapper <- R6::R6Class("randomForestSRC_SurvivalWrapper"
       if (!is.data.frame(new_data)) {
         stop("new_data must be a data frame.")
       }
-
-      # Predict survival curves using the trained random forest model
-      predictions <- predict(self$model, newdata = new_data)
-
+      
       # Use the model's failure times if custom failure times are not provided
       if (is.null(time.points)) {
         time.points <- self$time.points
       }
 
-      # Extract survival probabilities for each individual at each failure time
-      survival_probs <- predictions$survival
+        ## Predict survival curves using the trained random forest model
+        predictions <- predict(self$model, newdata = new_data)
+        ## Extract survival probabilities for each individual at each failure time
+        survival_probs <- get_survival_prob_at_time(predictions, time.points)
 
-      # Return predictions and failure times
-      list(predictions = survival_probs, time.points = time.points)
+        ## Return predictions and failure times
+        list(predictions = survival_probs, time.points = time.points)
     }
   )
 )
