@@ -227,7 +227,8 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 }
 
 
-predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive") {
+predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive",
+                              finite_sample_correction = TRUE) {
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
 
@@ -246,10 +247,10 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 
     if(cutoffs=="adaptive") {
         ## Apply Gui's method using the imputed censoring times
-        out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha)
+        out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, finite_sample_correction=finite_sample_correction)
     } else if(cutoffs=="adaptive-cqr") {
         ## Apply Gui's method using the imputed censoring times
-        out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, use_cqr=TRUE)
+        out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, use_cqr=TRUE, finite_sample_correction=finite_sample_correction)
     } else if (cutoffs=="candes-fixed") {
         ## Apply Candes' method using the imputed censoring times
         out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, c0=c0)

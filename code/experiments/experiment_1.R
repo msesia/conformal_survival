@@ -58,6 +58,9 @@ alpha <- 0.1
 ## Number of repetitions
 batch_size <- 10
 
+## Whether to use (approximate) finite sample correction for Gui's method
+fsc <- FALSE
+
 ####################
 ## Prepare output ##
 ####################
@@ -231,10 +234,10 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         ## }
 
         ## Apply Gui's method with "oracle" censoring model
-        predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
+        predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, finite_sample_correction=fsc)
 
         ## Apply Gui's method with "oracle" censoring model, with CQR approach
-        predictions$gui.oracle.cqr <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=TRUE)
+        predictions$gui.oracle.cqr <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=TRUE, finite_sample_correction=fsc)
     }
 
     ## Apply prototype (Candes, with fixed c0)
@@ -245,7 +248,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     ## predictions$prototype.candes.tuned <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, tuning.package=tuning.package, cutoffs="candes-tuning")
 
     ## Apply prototype (Gui)
-    predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive")
+    predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive", finite_sample_correction=fsc)
 
     ## Apply prototype (Gui, CQR)
     predictions$prototype.gui.cqr <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive-cqr")   
