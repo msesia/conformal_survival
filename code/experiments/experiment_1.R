@@ -202,7 +202,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     cens_model$fit(data = data.train[idx.train.cens,])
 
     ## Fit the Kaplan-Meier survival model for the de-censoring method
-    surv_object <- survival::Surv(time = data.train$time, event = data.train$status)
+    surv_object <- Surv(time = data.train$time, event = data.train$status)
     km_fit <- survival::survfit(surv_object ~ 1)
 
     ## Apply all methods
