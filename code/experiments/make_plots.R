@@ -20,14 +20,15 @@ method_colors <- c(
   "Prototype (Candes, oracle censoring model)" = "blue",
   "Prototype (Candes)" = "blue4",
   "Prototype (Gui et al., oracle censoring model)" = "green",
-  "Prototype (Gui et al.)" = "green4"
+  "Prototype (Gui et al.)" = "green4",
+  "Prototype (Gui et al., CQR)" = "green3"
 )
 
 method.values <- c("nominal", "cqr.decensor", "cqr", 
 #                   "candes.oracle",
                    "prototype.candes",
 #                   "gui.oracle",
-                   "prototype.gui",
+                   "prototype.gui.cqr",
                    "oracle"
                    )
 

@@ -1,5 +1,6 @@
 # Load required libraries
 suppressMessages(library(tidyverse))
+library(survival)
 
 ## Source utility functions for data generation and analysis
 source("../conf_surv/utils_data_new.R")
@@ -76,7 +77,6 @@ header <- tibble(setup = setup,
                  n_cal = num_samples_cal, 
                  alpha = alpha, 
                  batch = batch)
-print(header)
 
 ## Generate a unique and interpretable file name based on the input parameters
 output_file <- paste0("results/setup_", setup, "/", 
@@ -191,8 +191,8 @@ cens_model <- CensoringModel$new(model = cens_base_model)
 analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model, generator=NULL, C.train.oracle=NULL, C.cal.oracle=NULL) {
 
     ## Fit the survival model on the training data
-    surv_model$fit(survival::Surv(time, status) ~ ., data = data.train)
-
+    surv_model$fit(Surv(time, status) ~ ., data = data.train)
+    
     ## Fit the censoring model on a subset of the training data
     if(num_samples_train_cens < num_samples_train) {
         idx.train.cens <- sort(sample(1:nrow(data.train), num_samples_train_cens))
