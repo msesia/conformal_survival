@@ -98,7 +98,101 @@ cat("Output file name:", output_file, "\n")
 ############################
 
 if(setting==1) {
+    ## Setting 1 from Gui et al.
     ## Initialize the covariate model
+    num_features <- 1
+    covariate_generator <- function(num_samples) {
+        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
+    surv_mu_fun <- function(X) 0*X[,1] + 0.632 * X[,1]
+    surv_sigma_fun <- function(X) 0*X[,1] + 2
+    survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
+    ## Initialize the censoring time distribution
+    cens_rate_fun <- function(X) 0*X[,1] + 0.1
+    censoring_generator <- ExponentialDistribution$new(rate_fun = cens_rate_fun)
+
+} else if(setting==2) {
+    ## Setting 2 from Gui et al.
+    ## Initialize the covariate model
+    num_features <- 1
+    covariate_generator <- function(num_samples) {
+        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
+    surv_mu_fun <- function(X) 0*X[,1] + 3 * (X[,1]>2) + X[,1] * (X[,1]<2)
+    surv_sigma_fun <- function(X) 0*X[,1] + 0.5
+    survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
+    ## Initialize the censoring time distribution
+    cens_rate_fun <- function(X) 0*X[,1] + 0.1
+    censoring_generator <- ExponentialDistribution$new(rate_fun = cens_rate_fun)
+
+} else if(setting==3) {
+    ## Setting 3 from Gui et al.
+    ## Initialize the covariate model
+    num_features <- 1
+    covariate_generator <- function(num_samples) {
+        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
+    surv_mu_fun <- function(X) 0*X[,1] + 2 * (X[,1]>2) + X[,1] * (X[,1]<2)
+    surv_sigma_fun <- function(X) 0*X[,1] + 0.5
+    survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
+    ## Initialize the censoring time distribution
+    cens_rate_fun <- function(X) 0*X[,1] + 0.25 + (X[,1]+6)/100
+    censoring_generator <- ExponentialDistribution$new(rate_fun = cens_rate_fun)
+
+    
+} else if(setting==4) {
+    ## Setting 4 from Gui et al.
+    ## Initialize the covariate model
+    num_features <- 1
+    covariate_generator <- function(num_samples) {
+        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
+    surv_mu_fun <- function(X) 0*X[,1] + 3 * (X[,1]>2) + 1.5 * X[,1] * (X[,1]<2)
+    surv_sigma_fun <- function(X) 0*X[,1] + 0.5
+    survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
+    ## Initialize the censoring time distribution
+    cens_mu_fun <- function(X) 0*X[,1] + 2 + (2-X[,1])/50
+    cens_sigma_fun <- function(X) 0*X[,1] + 0.5
+    censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
+    
+} else if(setting==5) {
+    ## Setting 5 from Gui et al.
+    ## Initialize the covariate model
+    num_features <- 10
+    covariate_generator <- function(num_samples) {
+        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
+    surv_mu_fun <- function(X) 0*X[,1] + 0.126 * (X[,1] + sqrt(X[,3]*X[,5])) + 1
+    surv_sigma_fun <- function(X) 0*X[,1] + 0.5
+    survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
+    ## Initialize the censoring time distribution
+    cens_rate_fun <- function(X) 0*X[,1] + X[,10]/10 + 1/20
+    censoring_generator <- ExponentialDistribution$new(rate_fun = cens_rate_fun)
+
+} else if(setting==6) {
+    ## Setting 6 from Gui et al.
+    ## Initialize the covariate model
+    num_features <- 10
+    covariate_generator <- function(num_samples) {
+        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+    }
+    ## Initialize the survival time distribution
+    surv_mu_fun <- function(X) 0*X[,1] + 0.126 * (X[,1] + sqrt(X[,3]*X[,5])) + 1
+    surv_sigma_fun <- function(X) 0*X[,1] + (X[,2]+2)/4
+    survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
+    ## Initialize the censoring time distribution
+    cens_rate_fun <- function(X) 0*X[,1] + X[,10]/10 + 1/20
+    censoring_generator <- ExponentialDistribution$new(rate_fun = cens_rate_fun)
+    
+} else if(setting==7) {
+    ## New setting
+    ## Initialize the covariate model
+    num_features <- 20
     covariate_generator <- function(num_samples) {
         matrix(runif(num_samples * num_features, 0, 1), nrow = num_samples)
     }
@@ -111,46 +205,53 @@ if(setting==1) {
     cens_sigma_fun <- function(X) 0*X[,1] + 0.1
     censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
 
-} else if(setting==2) {
+} else if(setting==8) {
+    ## New setting
     ## Initialize the covariate model
+    num_features <- 20
     covariate_generator <- function(num_samples) {
         matrix(runif(num_samples * num_features, 0, 1), nrow = num_samples)
     }
     ## Initialize the survival time distribution
-    surv_mu_fun <- function(X) 0*X[,1] + X[,1]^0.25
-    surv_sigma_fun <- function(X) 0*X[,1] + 0.1
+    surv_mu_fun <- function(X) 0*X[,1] + (X[,2]>0.5) + (X[,3]<0.5) + (1-X[,1])^0.25
+    surv_sigma_fun <- function(X) 0*X[,1] + 0.1 * (1-X[,1])
     survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
     ## Initialize the censoring time distribution
-    cens_mu_fun <- function(X) 0*X[,1] + 0.5 + 0.2
-    cens_sigma_fun <- function(X) 0*X[,1] + 0.1
+    cens_mu_fun <- function(X) 0*X[,1] + (X[,2]>0.5) + (X[,3]<0.5) + (1-X[,1])^4 + 0.4
+    cens_sigma_fun <- function(X) 0*X[,1] + 0.1 * X[,2]
     censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
 
-} else if(setting==3) {
+} else if(setting==9) {
+    ## Setting 3 from Candes et al.
     ## Initialize the covariate model
+    num_features <- 100
     covariate_generator <- function(num_samples) {
-        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+        matrix(runif(num_samples * num_features, -1, 1), nrow = num_samples)
     }
     ## Initialize the survival time distribution
-    surv_mu_fun <- function(X) 0*X[,1] + 2 * (X[,1]>2) + X[,1] * (X[,1]<2)
-    surv_sigma_fun <- function(X) 0*X[,1] + 0.5
+    surv_mu_fun <- function(X) 0*X[,1] + log(2) + 1 + 0.55*(X[,1]^2-X[,3]*X[,5])
+    surv_sigma_fun <- function(X) 0*X[,1] + 1
     survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
     ## Initialize the censoring time distribution
-    cens_rate_fun <- function(X) 0*X[,1] + 0.25 + (6+X[,1])/100
+    cens_rate_fun <- function(X) 0*X[,1] + 0.4
     censoring_generator <- ExponentialDistribution$new(rate_fun = cens_rate_fun)
-} else if(setting==4) {
+
+} else if(setting==10) {
+    ## Setting 4 from Candes et al.
     ## Initialize the covariate model
+    num_features <- 100
     covariate_generator <- function(num_samples) {
-        matrix(runif(num_samples * num_features, 0, 4), nrow = num_samples)
+        matrix(runif(num_samples * num_features, -1, 1), nrow = num_samples)
     }
     ## Initialize the survival time distribution
-    surv_mu_fun <- function(X) 0*X[,1] + 3 * (X[,1]>2) + 1.5 * X[,1] * (X[,1]<2)
-    surv_sigma_fun <- function(X) 0*X[,1] + 0.5
+    surv_mu_fun <- function(X) 0*X[,1] + log(2) + 1 + 0.55*(X[,1]^2-X[,3]*X[,5])
+    surv_sigma_fun <- function(X) 0*X[,1] + abs(X[,10]) + 1
     survival_generator <- LogNormalDistribution$new(mu_fun = surv_mu_fun, sigma_fun = surv_sigma_fun)
     ## Initialize the censoring time distribution
-    cens_mu_fun <- function(X) 0*X[,1] + 2 + (2-X[,1])/50
-    cens_sigma_fun <- function(X) 0*X[,1] + 0.5
-    censoring_generator <- LogNormalDistribution$new(mu_fun = cens_mu_fun, sigma_fun = cens_sigma_fun)
+    cens_rate_fun <- function(X) 0*X[,1] + 0.4
+    censoring_generator <- ExponentialDistribution$new(rate_fun = cens_rate_fun)
 }
+
 
 # Initialize the data generator
 generator <- SurvivalDataGenerator$new(covariate_generator, survival_generator, censoring_generator)

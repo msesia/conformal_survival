@@ -14,6 +14,7 @@ SurvivalDataGenerator <- R6::R6Class("SurvivalDataGenerator",
     sample = function(num_samples) {
       # Generate covariates, true survival times, and censoring times
       X <- self$covariate_generator(num_samples)
+      colnames(X) <- paste("X",1:ncol(X), sep="")
       T <- self$survival$sample(X)
       C <- self$censoring$sample(X)
 
