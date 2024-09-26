@@ -21,7 +21,7 @@ if(parse_input) {
     args <- commandArgs(trailingOnly = TRUE)
     
     ## Checking if the correct number of arguments is provided
-    if (length(args) < 9) {
+    if (length(args) < 8) {
         stop("Insufficient arguments provided. Expected 7 arguments.")
     }
     
@@ -30,11 +30,10 @@ if(parse_input) {
     setting <- as.integer(args[2])
     surv_model_type <- args[3]
     cens_model_type <- args[4]
-    num_features <- as.integer(args[5])
-    num_samples_train <- as.integer(args[6])
-    num_samples_train_cens <- as.integer(args[7])
-    num_samples_cal <- as.integer(args[8])
-    batch <- as.integer(args[9])
+    num_samples_train <- as.integer(args[5])
+    num_samples_train_cens <- as.integer(args[6])
+    num_samples_cal <- as.integer(args[7])
+    batch <- as.integer(args[8])
 
 } else {
     setup <- 1
@@ -71,7 +70,6 @@ header <- tibble(setup = setup,
                  setting = setting, 
                  surv_model_type = surv_model_type, 
                  cens_model_type = cens_model_type,
-                 n_features = num_features,
                  n_train = num_samples_train, 
                  n_train_cens = num_samples_train_cens, 
                  n_cal = num_samples_cal, 
@@ -83,7 +81,6 @@ output_file <- paste0("results/setup_", setup, "/",
                       "setting", setting, 
                       "_surv_", surv_model_type, 
                       "_cens_", cens_model_type,
-                      "_feat", num_features,
                       "_train", num_samples_train, 
                       "_trainc", num_samples_train_cens, 
                       "_cal", num_samples_cal, 

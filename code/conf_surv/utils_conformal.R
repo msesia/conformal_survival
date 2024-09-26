@@ -342,7 +342,6 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
     }
 
     alpha_hat_values <- estimate_alpha_hat(num_a)
-    alpha_hat_values <- colMeans(alpha_hat_values)
 
     ##plot(1:num_a, alpha_hat_values)
 
