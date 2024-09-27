@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Parameters
-SETUP=1
+SETUP=4
 
 if [[ $SETUP == 1 ]]; then
   # Data distribution setting
@@ -11,29 +11,29 @@ if [[ $SETUP == 1 ]]; then
   # Censoring model types
   CENS_MODEL_TYPE_LIST=("grf" "cox") # "grf" "cox"
   # List of training sample sizes
-  N_TRAIN_LIST=(1500)
+  N_TRAIN_LIST=(1000)
   # List of censoring training sample sizes
-  N_TRAIN_CENS_LIST=(1500)
+  N_TRAIN_CENS_LIST=(1000)
   # List of calibration sample sizes
-  N_CAL_LIST=(1500)
+  N_CAL_LIST=(1000)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 5)
+  BATCH_LIST=$(seq 1 10)
 
   MEMO=5G
 
 elif [[ $SETUP == 2 ]]; then
   # Data distribution setting
-  SETTING_LIST=(1 2 3 4)
+  SETTING_LIST=(7 8 1 3 5 10)
   # Survival model types
   SURV_MODEL_TYPE_LIST=("grf") # "grf" "cox"
   # Censoring model types
   CENS_MODEL_TYPE_LIST=("grf") # "grf" "cox"
   # List of training sample sizes
-  N_TRAIN_LIST=(1500)
+  N_TRAIN_LIST=(1000)
   # List of censoring training sample sizes
-  N_TRAIN_CENS_LIST=(10 20 50 100 200 500 1000 1500)
+  N_TRAIN_CENS_LIST=(50 100 200 500 1000)
   # List of calibration sample sizes
-  N_CAL_LIST=(1500)
+  N_CAL_LIST=(1000)
   # Sequence of batches for parallel simulation
   BATCH_LIST=$(seq 1 10)
 
@@ -41,17 +41,35 @@ elif [[ $SETUP == 2 ]]; then
 
 elif [[ $SETUP == 3 ]]; then
   # Data distribution setting
-  SETTING_LIST=(1 2 3 4)
+  SETTING_LIST=(7 8 1 3 5 10)
   # Survival model types
   SURV_MODEL_TYPE_LIST=("grf" "cox") # "grf" "cox"
   # Censoring model types
   CENS_MODEL_TYPE_LIST=("grf") # "grf" "cox"
   # List of training sample sizes
-  N_TRAIN_LIST=(10 50 100 200 500 1000 1500 2000 5000 10000)
+  N_TRAIN_LIST=(10 50 100 200 500 1000 2000)
   # List of censoring training sample sizes
   N_TRAIN_CENS_LIST=(10000)
   # List of calibration sample sizes
-  N_CAL_LIST=(1500)
+  N_CAL_LIST=(1000)
+  # Sequence of batches for parallel simulation
+  BATCH_LIST=$(seq 1 10)
+
+  MEMO=5G
+
+elif [[ $SETUP == 4 ]]; then
+  # Data distribution setting
+  SETTING_LIST=(7 8 1 3 5 10)
+  # Survival model types
+  SURV_MODEL_TYPE_LIST=("grf") # "grf" "cox"
+  # Censoring model types
+  CENS_MODEL_TYPE_LIST=("grf") # "grf" "cox"
+  # List of training sample sizes
+  N_TRAIN_LIST=(1000)
+  # List of censoring training sample sizes
+  N_TRAIN_CENS_LIST=(10000)
+  # List of calibration sample sizes
+  N_CAL_LIST=(10 20 50 100 200 500 1000)
   # Sequence of batches for parallel simulation
   BATCH_LIST=$(seq 1 10)
 
