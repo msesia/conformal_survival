@@ -34,7 +34,7 @@ if(parse_input) {
     num_samples_train_cens <- as.integer(args[6])
     num_samples_cal <- as.integer(args[7])
     num_feat_censor <- as.integer(args[8])
-    batch <- as.integer(args[8])
+    batch <- as.integer(args[9])
 
 } else {
     setup <- 1
@@ -280,7 +280,7 @@ if (!is.null(model_constructors_surv[[surv_model_type]])) {
 # List of covariates to use for censoring model
 use.covariates <- paste("X", 1:min(num_features, num_feat_censor), sep="")
 
-# Define a mapping between model types and constructors for survival models
+# Define a mapping between model types and constructors for censoring models
 model_constructors_cens <- list(
     grf = function() GRF_SurvivalForestWrapper$new(use_covariates=use.covariates),
     survreg = function() SurvregModelWrapper$new(use_covariates=use.covariates, dist="lognormal"),

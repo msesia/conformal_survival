@@ -89,17 +89,17 @@ elif [[ $SETUP == 5 ]]; then
   # Survival model types
   SURV_MODEL_TYPE_LIST=("grf") # "grf" "cox"
   # Censoring model types
-  CENS_MODEL_TYPE_LIST=("grf") # "grf" "cox"
+  CENS_MODEL_TYPE_LIST=("cox") # "grf" "cox"
   # List of training sample sizes
-  N_TRAIN_LIST=(100)
+  N_TRAIN_LIST=(200)
   # List of censoring training sample sizes
-  N_TRAIN_CENS_LIST=(100)
+  N_TRAIN_CENS_LIST=(200)
   # List of calibration sample sizes
-  N_CAL_LIST=(100)
+  N_CAL_LIST=(200)
   # List of maximum number of features to use when fitting censoring model
   N_FEAT_CENS_LIST=(10 20 50 100)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 1)
+  BATCH_LIST=$(seq 1 10)
 
   MEMO=5G
 
