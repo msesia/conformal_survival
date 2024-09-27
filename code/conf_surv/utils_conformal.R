@@ -178,7 +178,6 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 
     if((is.null(c0)) && (!is.null(tuning.package))) {
         c0 <- tune.c0(tuning.package)
-        cat(sprintf("Tuned c0 = %.3f\n", c0))
     } else {
         ## Choose c0 if not supplied
         if(is.null(c0)) {
@@ -216,12 +215,6 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 
     lower.test <- sapply(1:n.test, function(i) {
         ## Compute weighted quantile of conformity scores
-        if(length(scores.cal) != length(weights.cal)) {
-            print(cens_model$predict(data.cal[idx.keep,], time.points=c0)$predictions)
-            print(length(scores.cal))
-            print(length(idx.keep))
-            print(length(weights.cal))
-        }
         calibration <- weighted_calibration(scores.cal, weights.cal, weights.test[i], alpha)
 
         ## Compute the calibrated lower bounds (don't go below 0)

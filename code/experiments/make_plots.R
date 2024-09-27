@@ -28,6 +28,7 @@ method.values <- c("nominal", "cqr.decensor", "cqr",
 #                   "candes.oracle",
                    "prototype.candes",
 #                   "gui.oracle",
+#                   "gui.oracle.cqr",
                    "prototype.gui",
 #                   "prototype.gui.cqr",
                    "oracle"
@@ -85,13 +86,11 @@ make_boxplot <- function(plot_setting=1, plot_surv_model=NULL, plot_cens_model="
 
 results <- load_data(1)
 
-for(pps in 1:4) {
-    make_boxplot(plot_setting=pps, plot_cens_model="grf", plot_n_train=1500, plot_n_cal=1500)
-    make_boxplot(plot_setting=pps, plot_surv_model="grf", plot_cens_model="grf", plot_n_train=1500, plot_n_cal=1500)
-    make_boxplot(plot_setting=pps, plot_cens_model="cox", plot_n_train=1500, plot_n_cal=1500)
+for(pps in 1:10) {
+    make_boxplot(plot_setting=pps, plot_cens_model="grf", plot_n_train=1000, plot_n_cal=1000)
+    make_boxplot(plot_setting=pps, plot_surv_model="grf", plot_cens_model="grf", plot_n_train=1000, plot_n_cal=1000)
+    make_boxplot(plot_setting=pps, plot_cens_model="cox", plot_n_train=1000, plot_n_cal=1000)
 }
-
-
 
 
 
@@ -104,9 +103,10 @@ make_plot_2 <- function(plot_setting=1) {
         mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
         group_by(setup, setting, n_train, n_train_cens, n_cal, alpha, Method, metric) %>%
         summarise(SE = sd(value)/sqrt(n()), value=mean(value), N=n())
-    df.limits <- tibble(metric=c("Coverage","Coverage"), value=c(0.5,1), n_train_cens=100, Method="Oracle")
+    df.limits <- tibble(metric=c("Coverage","Coverage"), value=c(0.3,1), n_train_cens=100, Method="Oracle")
     ## Plotting the data
     pp <- summary %>%
+        filter(n_train_cens >= 50) %>%
         ggplot(aes(y = value, x = n_train_cens, color=Method, shape=Method)) +
         geom_point() +
         geom_line() +
@@ -117,6 +117,7 @@ make_plot_2 <- function(plot_setting=1) {
         facet_wrap(metric ~ ., scales = "free", nrow=1) +
         scale_x_log10() +
         xlab("Number of training samples for censoring model") +
+        ylab("") +
         theme_bw()
     out.file <- sprintf("figures/exp2_%d.png", plot_setting)
     plot.height <- 2
@@ -125,7 +126,7 @@ make_plot_2 <- function(plot_setting=1) {
 
 results <- load_data(2)
 
-for(pps in 1:4) {
+for(pps in 1:10) {
     make_plot_2(plot_setting=pps)
 }
 
@@ -161,8 +162,44 @@ make_plot_3 <- function(plot_setting=1) {
 
 results <- load_data(3)
 
-for(pps in 1:4) {
+for(pps in 1:10) {
     make_plot_3(plot_setting=pps)
+}
+
+
+make_plot_4 <- function(plot_setting=1) {
+    df <- results %>% filter(setting==plot_setting)
+    summary <- df %>%
+        pivot_longer(c("Coverage (event time)", "Mean lower bound"), names_to="metric", values_to="value") %>%
+        mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
+        filter(Method %in% method.values) %>%
+        mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, alpha, Method, metric) %>%
+        summarise(SE = sd(value)/sqrt(n()), value=mean(value), N=n())
+    df.limits <- tibble(metric=c("Coverage","Coverage"), value=c(0.5,1), n_cal=100, Method="Oracle")
+    ## Plotting the data
+    pp <- summary %>%
+        filter(n_train>=100) %>%
+        ggplot(aes(y = value, x = n_cal, color=Method, shape=Method)) +
+        geom_point() +
+        geom_line() +
+        geom_errorbar(aes(ymin = value - SE, ymax = value + SE), width = 0.2) +
+        scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
+        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
+        geom_point(data=df.limits, alpha=0) +
+        facet_wrap(metric ~ ., scales = "free", nrow=1) +
+        scale_x_log10() +
+        xlab("Number of calibration samples") +
+        theme_bw()
+    out.file <- sprintf("figures/exp4_%d.png", plot_setting)
+    plot.height <- 2
+    ggsave(out.file, plot = pp, width = 6, height = plot.height, units = "in")
+}
+
+results <- load_data(4)
+
+for(pps in 1:10) {
+    make_plot_4(plot_setting=pps)
 }
 
 

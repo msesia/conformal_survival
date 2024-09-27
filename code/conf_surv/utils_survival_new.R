@@ -50,9 +50,16 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
   public = list(
     model = NULL,                # Holds the trained model object.
     formula = NULL,              # Stores the formula used to fit the model.
-    time.points = NULL,        # A sequence of time points for which survival probabilities are calculated.
+    time.points = NULL,          # A sequence of time points for which survival probabilities are calculated.
+    use_covariates = NULL,       # List of relevant covariates (e.g., c("X1", "X3")) to use when fitting the censoring model
 
-    # Abstract method to fit a survival model
+    # Constructor
+    # Description: Default constructor
+    initialize = function(use_covariates = NULL) {
+      self$use_covariates <- use_covariates
+    },
+
+    ## Abstract method to fit a survival model
     # Description:
     #   This method is abstract and must be implemented in the subclass. It is responsible for fitting
     #   a survival model using the specified formula and data. The subclass should define the specific
@@ -287,8 +294,20 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
       status <- response[, 2]
       covariates <- model.matrix(formula, data)[, -1, drop = FALSE]  # Remove intercept
       list(time = time, status = status, covariates = covariates)
-    }
-  )
+    },
+
+  ## Select relevant columns
+  select_columns = function(new_data) {
+      if(!is.null(self$use_covariates)) {
+          new_data_sel <- new_data %>% select(time, status, self$use_covariates)
+      } else {
+          new_data_sel <- new_data
+      }
+      return(new_data_sel)
+  }
+ 
+  ),
+ 
 )
 
 
@@ -298,6 +317,7 @@ GRF_SurvivalForestWrapper <- R6::R6Class("GRF_SurvivalForestWrapper",
 
     # Fit method
     fit = function(formula, data) {
+      data <- self$select_columns(data)
       parsed_data <- self$parse_formula(formula, data)
 
       # Fit the survival forest model
@@ -310,6 +330,8 @@ GRF_SurvivalForestWrapper <- R6::R6Class("GRF_SurvivalForestWrapper",
 
     # Predict survival curves with optional custom failure times
     predict = function(new_data, time.points = NULL) {
+      new_data <- self$select_columns(new_data)
+      
       # Generate the design matrix from the new data using the stored formula
       covariates_new <- model.matrix(self$formula, new_data)[, -1, drop = FALSE]
 
@@ -337,9 +359,17 @@ randomForestSRC_SurvivalWrapper <- R6::R6Class("randomForestSRC_SurvivalWrapper"
   inherit = SurvivalModelWrapper,
   public = list(
 
+    # Constructor
+    # Description: Default constructor
+    initialize = function(use_covariates = NULL) {
+      self$use_covariates <- use_covariates
+    },
+
     # Fit method
     fit = function(formula, data, ntree = 100, ...) {
-      # Extract the model frame based on the formula and data
+      data <- self$select_columns(data)
+
+      ## Extract the model frame based on the formula and data
       mf <- model.frame(formula, data)
 
       # Ensure the response is a survival object (Surv)
@@ -355,7 +385,8 @@ randomForestSRC_SurvivalWrapper <- R6::R6Class("randomForestSRC_SurvivalWrapper"
     },
 
     # Predict survival curves
-    predict = function(new_data, time.points = NULL) {
+    predict = function(new_data, time.points = NULL) { 
+      new_data <- self$select_columns(new_data)
       # Ensure that new_data is correctly formatted
       if (!is.data.frame(new_data)) {
         stop("new_data must be a data frame.")
@@ -387,12 +418,14 @@ SurvregModelWrapper <- R6::R6Class("SurvregModelWrapper",
     # Description: Initializes the SurvregModelWrapper object with the specified distribution.
     # Inputs:
     #   - dist: The distribution to be used in the survreg model (e.g., "weibull", "lognormal", etc.).
-    initialize = function(dist = "weibull") {
+    initialize = function(use_covariates = NULL, dist = "weibull") {
+      self$use_covariates <- use_covariates
       self$dist <- dist
     },
 
     # Fit method
     fit = function(formula, data) {
+      data <- self$select_columns(data)
       parsed_data <- self$parse_formula(formula, data)
       self$model <- survival::survreg(formula, data = data, dist = self$dist, control = survival::survreg.control(maxiter = 1000))
       self$time.points <- seq(min(parsed_data$time), max(parsed_data$time), length.out = 100)
@@ -426,9 +459,12 @@ CoxphModelWrapper <- R6::R6Class("CoxphModelWrapper",
     model = NULL,             # To store the fitted coxph model
     formula_env = NULL,        # To store the formula environment
 
-    initialize = function() {},
+    initialize = function(use_covariates = NULL) {
+      self$use_covariates <- use_covariates
+    },
 
     fit = function(formula, data) {
+        data <- self$select_columns(data)
         # Fit the coxph model and store it
         parsed_data <- self$parse_formula(formula, data)
         self$model <- survival::coxph(formula, data = data, x = TRUE, y = TRUE)
@@ -442,6 +478,7 @@ CoxphModelWrapper <- R6::R6Class("CoxphModelWrapper",
     },
 
     predict = function(new_data, time.points = NULL) {
+        new_data <- self$select_columns(new_data)
 
         ## Use the model's failure times if custom failure times are not provided
         if (is.null(time.points)) {

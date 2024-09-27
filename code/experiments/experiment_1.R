@@ -21,7 +21,7 @@ if(parse_input) {
     args <- commandArgs(trailingOnly = TRUE)
     
     ## Checking if the correct number of arguments is provided
-    if (length(args) < 8) {
+    if (length(args) < 9) {
         stop("Insufficient arguments provided. Expected 7 arguments.")
     }
     
@@ -33,6 +33,7 @@ if(parse_input) {
     num_samples_train <- as.integer(args[5])
     num_samples_train_cens <- as.integer(args[6])
     num_samples_cal <- as.integer(args[7])
+    num_feat_censor <- as.integer(args[8])
     batch <- as.integer(args[8])
 
 } else {
@@ -42,6 +43,7 @@ if(parse_input) {
     cens_model_type <- "cox"
     num_samples_train <- 200
     num_samples_cal <- 500
+    num_feat_censor <- 10
     batch <- 1
 }
 
@@ -72,7 +74,8 @@ header <- tibble(setup = setup,
                  cens_model_type = cens_model_type,
                  n_train = num_samples_train, 
                  n_train_cens = num_samples_train_cens, 
-                 n_cal = num_samples_cal, 
+                 n_cal = num_samples_cal,
+                 num_feat_censor = num_feat_censor,                 
                  alpha = alpha, 
                  batch = batch)
 
@@ -84,6 +87,7 @@ output_file <- paste0("results/setup_", setup, "/",
                       "_train", num_samples_train, 
                       "_trainc", num_samples_train_cens, 
                       "_cal", num_samples_cal, 
+                      "_nfc", num_feat_censor,
                       "_batch", batch, ".txt")
 
 ## Print the output file name to verify
@@ -189,7 +193,7 @@ if(setting==1) {
 } else if(setting==7) {
     ## New setting
     ## Initialize the covariate model
-    num_features <- 20
+    num_features <- 100
     covariate_generator <- function(num_samples) {
         matrix(runif(num_samples * num_features, 0, 1), nrow = num_samples)
     }
@@ -205,7 +209,7 @@ if(setting==1) {
 } else if(setting==8) {
     ## New setting
     ## Initialize the covariate model
-    num_features <- 20
+    num_features <- 100
     covariate_generator <- function(num_samples) {
         matrix(runif(num_samples * num_features, 0, 1), nrow = num_samples)
     }
@@ -257,8 +261,8 @@ generator <- SurvivalDataGenerator$new(covariate_generator, survival_generator, 
 ## Instantiate the survival and censoring models ##
 ###################################################
 
-# Define a mapping between model types and constructors for survival and censoring models
-model_constructors <- list(
+# Define a mapping between model types and constructors for survival models
+model_constructors_surv <- list(
     grf = GRF_SurvivalForestWrapper$new,
     survreg = function() SurvregModelWrapper$new(dist="lognormal"),
     rf = randomForestSRC_SurvivalWrapper$new,
@@ -266,15 +270,27 @@ model_constructors <- list(
 )
 
 # Instantiate survival model based on the specified type
-if (!is.null(model_constructors[[surv_model_type]])) {
-    surv_model <- model_constructors[[surv_model_type]]()
+if (!is.null(model_constructors_surv[[surv_model_type]])) {
+    surv_model <- model_constructors_surv[[surv_model_type]]()
 } else {
     stop("Unknown survival model type!")
 }
 
+
+# List of covariates to use for censoring model
+use.covariates <- paste("X", 1:min(num_features, num_feat_censor), sep="")
+
+# Define a mapping between model types and constructors for survival models
+model_constructors_cens <- list(
+    grf = function() GRF_SurvivalForestWrapper$new(use_covariates=use.covariates),
+    survreg = function() SurvregModelWrapper$new(use_covariates=use.covariates, dist="lognormal"),
+    rf = function() randomForestSRC_SurvivalWrapper$new(use_covariates=use.covariates),
+    cox = function() CoxphModelWrapper$new(use_covariates=use.covariates)
+)
+
 # Instantiate censoring model based on the specified type
-if (!is.null(model_constructors[[cens_model_type]])) {
-    cens_base_model <- model_constructors[[cens_model_type]]()
+if (!is.null(model_constructors_cens[[cens_model_type]])) {
+    cens_base_model <- model_constructors_cens[[cens_model_type]]()
 } else {
     stop("Unknown censoring model type!")
 }
@@ -332,8 +348,8 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         ## }
 
         ## Apply Gui's method with "oracle" censoring model
-        predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, finite_sample_correction=fsc)
-
+        predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=FALSE, use_censoring_model=TRUE,
+                                              finite_sample_correction=fsc)
         ## Apply Gui's method with "oracle" censoring model, with CQR approach
         predictions$gui.oracle.cqr <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=TRUE, finite_sample_correction=fsc)
     }
