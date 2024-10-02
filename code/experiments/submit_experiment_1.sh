@@ -1,18 +1,15 @@
 #!/bin/bash
 
 # Parameters
-SETUP=1
+SETUP=0
 
-if [[ $SETUP == 1 ]]; then
+if [[ $SETUP == 0 ]]; then
   # Data distribution setting
-#  SETTING_LIST=(7 8 1 3 5 10)
-  SETTING_LIST=(8)
+  SETTING_LIST=(1 2 3 4 5 6 7 8 9 10)
   # Survival model types
-#  SURV_MODEL_TYPE_LIST=("grf" "rf" "cox" "survreg")
   SURV_MODEL_TYPE_LIST=("grf")
   # Censoring model types
-#  CENS_MODEL_TYPE_LIST=("grf" "cox") # "grf" "cox"
-  CENS_MODEL_TYPE_LIST=("grf") # "grf" "cox"
+  CENS_MODEL_TYPE_LIST=("grf")
   # List of training sample sizes
   N_TRAIN_LIST=(1000)
   # List of censoring training sample sizes
@@ -20,7 +17,27 @@ if [[ $SETUP == 1 ]]; then
   # List of calibration sample sizes
   N_CAL_LIST=(1000)
   # List of maximum number of features to use when fitting censoring model
-  N_FEAT_CENS_LIST=(100)
+  N_FEAT_CENS_LIST=(10)
+  # Sequence of batches for parallel simulation
+  BATCH_LIST=$(seq 1 10)
+
+  MEMO=5G
+
+elif [[ $SETUP == 1 ]]; then
+  # Data distribution setting
+  SETTING_LIST=(7 8 1 3 5 10)
+  # Survival model types
+  SURV_MODEL_TYPE_LIST=("grf" "rf" "cox" "survreg")
+  # Censoring model types
+  CENS_MODEL_TYPE_LIST=("grf" "cox")
+  # List of training sample sizes
+  N_TRAIN_LIST=(1000)
+  # List of censoring training sample sizes
+  N_TRAIN_CENS_LIST=(1000)
+  # List of calibration sample sizes
+  N_CAL_LIST=(1000)
+  # List of maximum number of features to use when fitting censoring model
+  N_FEAT_CENS_LIST=(10)
   # Sequence of batches for parallel simulation
   BATCH_LIST=$(seq 1 10)
 
@@ -40,7 +57,7 @@ elif [[ $SETUP == 2 ]]; then
   # List of calibration sample sizes
   N_CAL_LIST=(1000)
   # List of maximum number of features to use when fitting censoring model
-  N_FEAT_CENS_LIST=(100)
+  N_FEAT_CENS_LIST=(10)
   # Sequence of batches for parallel simulation
   BATCH_LIST=$(seq 1 10)
 
@@ -50,7 +67,7 @@ elif [[ $SETUP == 3 ]]; then
   # Data distribution setting
   SETTING_LIST=(7 8 1 3 5 10)
   # Survival model types
-  SURV_MODEL_TYPE_LIST=("grf" "cox") # "grf" "cox"
+  SURV_MODEL_TYPE_LIST=("grf") # "grf" "cox"
   # Censoring model types
   CENS_MODEL_TYPE_LIST=("grf") # "grf" "cox"
   # List of training sample sizes
@@ -60,9 +77,9 @@ elif [[ $SETUP == 3 ]]; then
   # List of calibration sample sizes
   N_CAL_LIST=(1000)
   # List of maximum number of features to use when fitting censoring model
-  N_FEAT_CENS_LIST=(100)
+  N_FEAT_CENS_LIST=(10)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 10)
+  BATCH_LIST=$(seq 2 10)
 
   MEMO=5G
 
@@ -80,7 +97,7 @@ elif [[ $SETUP == 4 ]]; then
   # List of calibration sample sizes
   N_CAL_LIST=(10 20 50 100 200 500 1000)
   # List of maximum number of features to use when fitting censoring model
-  N_FEAT_CENS_LIST=(100)
+  N_FEAT_CENS_LIST=(10)
   # Sequence of batches for parallel simulation
   BATCH_LIST=$(seq 1 10)
 
@@ -88,15 +105,15 @@ elif [[ $SETUP == 4 ]]; then
 
 elif [[ $SETUP == 5 ]]; then
   # Data distribution setting
-  SETTING_LIST=(7)
+  SETTING_LIST=(7 8 10)
   # Survival model types
   SURV_MODEL_TYPE_LIST=("grf") # "grf" "cox"
   # Censoring model types
-  CENS_MODEL_TYPE_LIST=("cox") # "grf" "cox"
+  CENS_MODEL_TYPE_LIST=("grf") # "grf" "cox"
   # List of training sample sizes
-  N_TRAIN_LIST=(200)
+  N_TRAIN_LIST=(1000)
   # List of censoring training sample sizes
-  N_TRAIN_CENS_LIST=(200)
+  N_TRAIN_CENS_LIST=(1000)
   # List of calibration sample sizes
   N_CAL_LIST=(200)
   # List of maximum number of features to use when fitting censoring model
