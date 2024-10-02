@@ -14,44 +14,77 @@ load_data <- function(setup) {
 # Custom color palette using named colors
 method_colors <- c(
   "Oracle" = "black",
-  "Nominal" = "grey",
+  "None" = "grey",
   "Naive CQR" = "orchid1",
   "Qi et al." = "tan2",
   "Prototype (Candes, oracle censoring model)" = "blue",
   "Prototype (Candes)" = "blue4",
   "Prototype (Gui et al., oracle censoring model)" = "green",
-  "Prototype (Gui et al.)" = "green4",
+  "Prototype" = "green4",
   "Prototype (Gui et al., CQR)" = "green3"
 )
 
-method.values <- c("nominal", "cqr.decensor", "cqr",
+method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
 #                   "candes.oracle",
-                   "prototype.candes",
+##                   "prototype.candes",
 #                   "gui.oracle",
 #                   "gui.oracle.cqr",
-                   "prototype.gui",
-#                   "prototype.gui.cqr",
-                   "oracle"
+                   "prototype.gui"
+#                   "prototype.gui.cqr",                   
                    )
 
-method.labels <- c("Nominal", "Qi et al.", "Naive CQR",
+method.labels <- c("Oracle", "None", "Naive CQR", "Qi et al.",
 #                   "Prototype (Candes, oracle)",
-                   "Prototype (Candes)",
+#                   "Prototype (Candes)",
 #                   "Prototype (Gui et al., oracle)",
-                   "Prototype (Gui et al.)",
-                   "Oracle"
+                   "Prototype"                   
                    )
+
+
+make_figure_1 <- function(plot_surv_model=NULL, plot_cens_model="grf", plot_n_train=500, plot_n_cal=500) {
+    setting.list <- c(8,10)
+    df <- results %>% filter(setting %in% setting.list, surv_model_type==plot_surv_model)
+    out.file <- sprintf("figures/exp1_fig1_bp_surv_%s_cens_%s_n%d_n%d.pdf",
+                        plot_surv_model, plot_cens_model, plot_n_train, plot_n_cal)
+    plot.height <- 3
+    summary <- df %>%
+        mutate(`Cens. model` = surv_model_type) %>%
+        filter(setting %in% setting.list, cens_model_type==plot_cens_model, n_train==plot_n_train, n_cal==plot_n_cal) %>%
+        pivot_longer(c("Coverage (event time)", "Mean lower bound"), names_to="metric", values_to="value") %>%
+        mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
+        filter(Method %in% method.values) %>%
+        mutate(Method = fct_rev(factor(Method, levels = method.values, labels = method.labels))) %>%
+        mutate(Setting = setting)
+    if(nrow(summary)==0) return(0)
+    df.limits <- tibble(metric=c("Coverage","Coverage", "Lower Bound"), value=c(0,1,0), Method="Oracle")
+    ## Plotting the data
+    if(nrow(summary)==0) return()
+    pp <- summary %>%
+        ggplot(aes(y = Method, x = value, color=Method)) +
+        geom_boxplot() +
+        scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
+        geom_vline(data = summary %>% filter(metric=="Coverage"), aes(xintercept = 0.9), linetype = "dashed", color="red") +
+        geom_point(data=df.limits, alpha=0) +
+        xlab("") +
+        theme_bw() +
+        theme(legend.position = "none") +
+        facet_grid(Setting ~ metric, scales = "free", labeller = labeller(Setting = label_both, metric = label_value))
+    ggsave(out.file, plot = pp, width = 6, height = plot.height, units = "in")
+}
+results <- load_data(1)
+make_figure_1(plot_cens_model="grf", plot_surv_model="grf", plot_n_train=1000, plot_n_cal=1000)
+
 
 
 make_boxplot <- function(plot_setting=1, plot_surv_model=NULL, plot_cens_model="grf", plot_n_train=500, plot_n_cal=500) {
     if(!is.null(plot_surv_model)) {
         df <- results %>% filter(setting==plot_setting, surv_model_type==plot_surv_model)
-        out.file <- sprintf("figures/exp1_%d_bp_surv_%s_cens_%s_n%d_n%d.png",
+        out.file <- sprintf("figures/exp1_%d_bp_surv_%s_cens_%s_n%d_n%d.pdf",
                             plot_setting, plot_surv_model, plot_cens_model, plot_n_train, plot_n_cal)
         plot.height <- 2
     } else {
         df <- results
-        out.file <- sprintf("figures/exp1_%d_bp_surv_all_cens_%s_n%d_n%d.png", plot_setting, plot_cens_model, plot_n_train, plot_n_cal)
+        out.file <- sprintf("figures/exp1_%d_bp_surv_all_cens_%s_n%d_n%d.pdf", plot_setting, plot_cens_model, plot_n_train, plot_n_cal)
         plot.height <- 6.5
     }
     summary <- df %>%
@@ -64,6 +97,7 @@ make_boxplot <- function(plot_setting=1, plot_surv_model=NULL, plot_cens_model="
     if(nrow(summary)==0) return(0)
     df.limits <- tibble(metric=c("Coverage","Coverage", "Lower Bound"), value=c(0,1,0), Method="Oracle")
     ## Plotting the data
+    if(nrow(summary)==0) return()
     pp <- summary %>%
         ggplot(aes(y = Method, x = value, color=Method)) +
         geom_boxplot() +
@@ -101,30 +135,34 @@ make_plot_2 <- function(plot_setting=1) {
         mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
         filter(Method %in% method.values) %>%
         mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
-        group_by(setup, setting, n_train, n_train_cens, n_cal, alpha, Method, metric) %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha, Method, metric) %>%
         summarise(SE = sd(value)/sqrt(n()), value=mean(value), N=n())
-    df.limits <- tibble(metric=c("Coverage","Coverage"), value=c(0.3,1), n_train_cens=100, Method="Oracle")
+    df.limits <- tibble(metric=c("Coverage","Coverage", "Lower Bound"), value=c(0.3,1,0), n_train_cens=100, Method="Oracle")
     ## Plotting the data
+    if(nrow(summary)==0) return()
     pp <- summary %>%
         filter(n_train_cens >= 50) %>%
         ggplot(aes(y = value, x = n_train_cens, color=Method, shape=Method)) +
         geom_point() +
         geom_line() +
-#        geom_errorbar(aes(ymin = value - SE, ymax = value + SE), width = 0.2) +
+#        geom_errorbar(aes(ymin = value - 2*SE, ymax = value + 2*SE), width = 0.2) +
         scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
-        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
+##        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
         geom_point(data=df.limits, alpha=0) +
         facet_wrap(metric ~ ., scales = "free", nrow=1) +
         scale_x_log10() +
         xlab("Number of training samples for censoring model") +
         ylab("") +
         theme_bw()
-    out.file <- sprintf("figures/exp2_%d.png", plot_setting)
+    out.file <- sprintf("figures/exp2_%d.pdf", plot_setting)
     plot.height <- 2
     ggsave(out.file, plot = pp, width = 6, height = plot.height, units = "in")
 }
 
 results <- load_data(2)
+
+make_plot_2(plot_setting=8)
+make_plot_2(plot_setting=10)
 
 for(pps in 1:10) {
     make_plot_2(plot_setting=pps)
@@ -136,31 +174,35 @@ make_plot_3 <- function(plot_setting=1) {
     summary <- df %>%
         pivot_longer(c("Coverage (event time)", "Mean lower bound"), names_to="metric", values_to="value") %>%
         mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
-        filter(Method %in% method.values) %>%
+        filter(Method %in% method.values, surv_model_type=="grf") %>%
         mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
-        group_by(setup, setting, n_train, n_train_cens, n_cal, alpha, Method, metric) %>%
-        summarise(SE = sd(value)/sqrt(n()), value=mean(value), N=n())
-    df.limits <- tibble(metric=c("Coverage","Coverage"), value=c(0.5,1), n_train=100, Method="Oracle")
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha, Method, metric, surv_model_type) %>%
+        summarise(SE = sd(value)/sqrt(n()), value=mean(value), N=n()) %>%
+        filter(n_train>=50)
+    df.limits <- tibble(metric=c("Coverage","Coverage", "Lower Bound"), value=c(0.3,1,0), n_train=100, Method="Oracle")
     ## Plotting the data
+    if(nrow(summary)==0) return()
     pp <- summary %>%
-        filter(n_train>=100) %>%
         ggplot(aes(y = value, x = n_train, color=Method, shape=Method)) +
         geom_point() +
         geom_line() +
-#        geom_errorbar(aes(ymin = value - SE, ymax = value + SE), width = 0.2) +
+#        geom_errorbar(aes(ymin = value - 2*SE, ymax = value + 2*SE), width = 0.2) +
         scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
-        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
+##        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
         geom_point(data=df.limits, alpha=0) +
-        facet_wrap(metric ~ ., scales = "free", nrow=1) +
+        facet_wrap(metric~., scales = "free") +
         scale_x_log10() +
         xlab("Number of training samples") +
         theme_bw()
-    out.file <- sprintf("figures/exp3_%d.png", plot_setting)
+    out.file <- sprintf("figures/exp3_%d.pdf", plot_setting)
     plot.height <- 2
     ggsave(out.file, plot = pp, width = 6, height = plot.height, units = "in")
 }
 
 results <- load_data(3)
+
+make_plot_3(plot_setting=8)
+make_plot_3(plot_setting=10)
 
 for(pps in 1:10) {
     make_plot_3(plot_setting=pps)
@@ -174,32 +216,77 @@ make_plot_4 <- function(plot_setting=1) {
         mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
         filter(Method %in% method.values) %>%
         mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
-        group_by(setup, setting, n_train, n_train_cens, n_cal, alpha, Method, metric) %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha, Method, metric) %>%
         summarise(SE = sd(value)/sqrt(n()), value=mean(value), N=n())
-    df.limits <- tibble(metric=c("Coverage","Coverage"), value=c(0.5,1), n_cal=100, Method="Oracle")
+    df.limits <- tibble(metric=c("Coverage","Coverage","Lower Bound"), value=c(0.3,1,0), n_cal=100, Method="Oracle")
     ## Plotting the data
+    if(nrow(summary)==0) return()
     pp <- summary %>%
         filter(n_train>=100) %>%
         ggplot(aes(y = value, x = n_cal, color=Method, shape=Method)) +
-        geom_point() +
-        geom_line() +
-        geom_errorbar(aes(ymin = value - SE, ymax = value + SE), width = 0.2) +
+        geom_point(alpha=0.75) +
+        geom_line(alpha=0.75) +
+##        geom_errorbar(aes(ymin = value - 2*SE, ymax = value + 2*SE), width = 0.2) +
         scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
-        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
+##        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
         geom_point(data=df.limits, alpha=0) +
         facet_wrap(metric ~ ., scales = "free", nrow=1) +
         scale_x_log10() +
         xlab("Number of calibration samples") +
+        ylab("") +
         theme_bw()
-    out.file <- sprintf("figures/exp4_%d.png", plot_setting)
+    out.file <- sprintf("figures/exp4_%d.pdf", plot_setting)
     plot.height <- 2
     ggsave(out.file, plot = pp, width = 6, height = plot.height, units = "in")
 }
 
 results <- load_data(4)
 
+make_plot_4(plot_setting=8)
+make_plot_4(plot_setting=10)
+
 for(pps in 1:10) {
     make_plot_4(plot_setting=pps)
+}
+
+
+
+make_plot_5 <- function(plot_setting=1) {
+    df <- results %>% filter(setting==plot_setting)
+    summary <- df %>%
+        pivot_longer(c("Coverage (event time)", "Mean lower bound"), names_to="metric", values_to="value") %>%
+        mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
+        filter(Method %in% method.values) %>%
+        mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha, Method, metric) %>%
+        summarise(SE = sd(value)/sqrt(n()), value=mean(value), N=n())
+    df.limits <- tibble(metric=c("Coverage","Coverage", "Lower Bound"), value=c(0.3,1,0), num_feat_censor=100, Method="Oracle")
+    ## Plotting the data
+    if(nrow(summary)==0) return()
+    pp <- summary %>%
+        ggplot(aes(y = value, x = num_feat_censor, color=Method, shape=Method)) +
+        geom_point(alpha=0.75) +
+        geom_line(alpha=0.75) +
+##        geom_errorbar(aes(ymin = value - 2*SE, ymax = value + 2*SE), width = 0.2) +
+        scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
+##        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
+        geom_point(data=df.limits, alpha=0) +
+        facet_wrap(metric ~ ., scales = "free", nrow=1) +
+        scale_x_log10() +
+        xlab("Number of features in the censoring model") +
+        ylab("") +
+        theme_bw()
+    out.file <- sprintf("figures/exp5_%d.pdf", plot_setting)
+    plot.height <- 2
+    ggsave(out.file, plot = pp, width = 6, height = plot.height, units = "in")
+}
+
+results <- load_data(5)
+
+make_plot_5(plot_setting=8)
+
+for(pps in 1:10) {
+    make_plot_5(plot_setting=pps)
 }
 
 
@@ -208,7 +295,7 @@ for(pps in 1:10) {
 # Custom shape mapping (optional)
 method_shapes <- c(
   "Oracle" = 16,  # Circle
-  "Nominal" = 17, # Triangle
+  "None" = 17, # Triangle
   "CQR" = 15,     # Square
   "Qi et al." = 15, # Square (same as CQR)
   "Candes (oracle)" = 16,  # Circle
@@ -237,7 +324,7 @@ make_plot_vs_n <- function(plot_n_cal=500) {
         ggplot(aes(x = n_train, y = value, color = Method, shape = Method)) +
         geom_point(alpha=0.5) +
         geom_line(alpha=0.5) +
-        geom_errorbar(aes(ymin = value - SE, ymax = value + SE), width = 0.2) +
+        geom_errorbar(aes(ymin = value - 2*SE, ymax = value + 2*SE), width = 0.2) +
         facet_wrap(metric ~ ., scales = "free", nrow=1) +
         scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
         scale_shape_manual(values = method_shapes) + # Apply custom shape scale (optional)

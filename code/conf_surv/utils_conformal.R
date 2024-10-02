@@ -1,6 +1,6 @@
 library(tidyverse)
 
-evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=NULL) {
+evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=NULL, method=NULL) {
     coverage_observed <- mean(lower_bound <= observed_time)
     coverage_event_time <- NA
     mean_lower_bound_cover <- NA
@@ -20,13 +20,17 @@ evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=
     }
     mean_lower_bound <- mean(lower_bound)
     median_lower_bound <- median(lower_bound)
-    out <- tibble("Coverage (observed time)"=coverage_observed,
+    out <- tibble(#"Coverage (observed time)"=coverage_observed,
                   "Mean lower bound"=mean_lower_bound,
-                  "Median lower bound"=median_lower_bound,
-                  "Mean lower bound (cover)"=mean_lower_bound_cover,
-                  "Median lower bound (cover)"=median_lower_bound_cover,
+#                  "Median lower bound"=median_lower_bound,
+#                  "Mean lower bound (cover)"=mean_lower_bound_cover,
+#                  "Median lower bound (cover)"=median_lower_bound_cover,
                   "Coverage (event time)"=coverage_event_time,
-                  "Oracle MSE" = oracle_MSE)
+#                  "Oracle MSE" = oracle_MSE
+    )
+    if(!is.null(method)) {
+        out <- out %>% mutate(Method = method) %>% select(Method, everything())
+    }
     return(out)
 
 }
@@ -227,7 +231,7 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 
 
 predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive",
-                              finite_sample_correction = TRUE) {
+                              finite_sample_correction = FALSE) {
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
 
