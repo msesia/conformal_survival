@@ -231,7 +231,7 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 
 
 predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive",
-                              finite_sample_correction = FALSE) {
+                              finite_sample_correction = FALSE, doubly_robust = TRUE) {
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
 
@@ -250,13 +250,13 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
 
     if(cutoffs=="adaptive") {
         ## Apply Gui's method using the imputed censoring times
-        out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, finite_sample_correction=finite_sample_correction)
+        pred.calibrated <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, finite_sample_correction=finite_sample_correction)
     } else if(cutoffs=="adaptive-cqr") {
         ## Apply Gui's method using the imputed censoring times
-        out <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, use_cqr=TRUE, finite_sample_correction=finite_sample_correction)
+        pred.calibrated <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, use_cqr=TRUE, finite_sample_correction=finite_sample_correction)
     } else if (cutoffs=="candes-fixed") {
         ## Apply Candes' method using the imputed censoring times
-        out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, c0=c0)
+        pred.calibrated <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, c0=c0)
     } else if (cutoffs=="candes-tuning") {
         if(is.null(tuning.package)) {
             stop("Must provide 'tuning.package' input to allow automatic tuning of c0.")
@@ -269,11 +269,20 @@ predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, a
             C.train[idx.event.train] <- cens_imputator$sample(tuning.package$data.train[idx.event.train,], T=Y.train[idx.event])
         }
         tuning.package$C.train <- C.train
-        out <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, tuning.package=tuning.package, c0=c0)
+        pred.calibrated <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, tuning.package=tuning.package, c0=c0)
     }
     else {
         stop(sprintf("Unknown input option: cutoffs = %s.", cutoffs))
     }
+
+    if(doubly_robust) {
+        ## No calibration (trust the survival model's output)
+        pred.nominal <- surv_model$predict_quantiles(data.test, probs=alpha)[[1]]
+        out <- pmin(pred.calibrated, pred.nominal)
+    } else {
+        out <- pred.calibrated
+    }
+
     return(out)
 }
 
