@@ -14,30 +14,31 @@ load_data <- function(setup) {
 # Custom color palette using named colors
 method_colors <- c(
   "Oracle" = "black",
-  "None" = "grey",
+  "Uncalibrated" = "grey",
   "Naive CQR" = "orchid1",
-  "Qi et al." = "tan2",
+  "KM Decensoring" = "tan2",
   "Prototype (Candes, oracle censoring model)" = "blue",
   "Prototype (Candes)" = "blue4",
   "Prototype (Gui et al., oracle censoring model)" = "green",
-  "Prototype" = "green4",
-  "Prototype (Gui et al., CQR)" = "green3"
+  "DR-COSAR (fixed)" = "green3",
+  "DR-COSAR (adaptive)" = "green4"
 )
 
 method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
 #                   "candes.oracle",
-##                   "prototype.candes",
 #                   "gui.oracle",
 #                   "gui.oracle.cqr",
+                   "prototype.candes",
                    "prototype.gui"
 #                   "prototype.gui.cqr",                   
                    )
 
-method.labels <- c("Oracle", "None", "Naive CQR", "Qi et al.",
+method.labels <- c("Oracle", "Uncalibrated", "Naive CQR", "KM Decensoring",
 #                   "Prototype (Candes, oracle)",
 #                   "Prototype (Candes)",
 #                   "Prototype (Gui et al., oracle)",
-                   "Prototype"                   
+                   "DR-COSAR (fixed)",
+                   "DR-COSAR (adaptive)"                   
                    )
 
 setting.values <- c(8,7,10,9,1:6)
