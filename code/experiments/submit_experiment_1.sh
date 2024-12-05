@@ -79,7 +79,7 @@ elif [[ $SETUP == 3 ]]; then
   # List of maximum number of features to use when fitting censoring model
   N_FEAT_CENS_LIST=(10)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 2 10)
+  BATCH_LIST=$(seq 1 10)
 
   MEMO=5G
 

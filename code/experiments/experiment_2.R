@@ -4,7 +4,6 @@ library(survival)
 
 ## Source utility functions for data generation and analysis
 source("../conf_surv/utils_real_data.R")
-source("../conf_surv/utils_data.R")
 source("../conf_surv/utils_survival.R")
 source("../conf_surv/utils_censoring.R")
 source("../conf_surv/utils_conformal.R")
@@ -92,7 +91,7 @@ cat("Output file name:", output_file, "\n")
 # Define data distribution #
 ############################
 
-data <- load_data("GBSG")
+data <- read_csv(sprintf("../../data/%s.csv", dataset))
 
 ## Data features
 num_features <- ncol(data) - 2

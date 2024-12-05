@@ -1,5 +1,5 @@
 library(tidyverse)
-library(hdf5r)
+#library(hdf5r)
 
 # Helper function to calculate mode
 get_mode <- function(x) {
@@ -32,7 +32,7 @@ load_data <- function(dataset.name) {
         colnames(df) <- col.names
     } else if (dataset.name == "GBSG") {
         ifile <- "../../data/gbsg_cancer_train_test.h5"
-        h5_file <- H5File$new(ifile, mode = "r")
+        h5_file <- hdf5r::H5File$new(ifile, mode = "r")
         train_group <- h5_file[["train"]]
         test_group <- h5_file[["test"]]
         dataset.1.x <- train_group[["x"]]

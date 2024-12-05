@@ -11,7 +11,7 @@ if [[ $SETUP == 0 ]]; then
   # Censoring model types
   CENS_MODEL_TYPE_LIST=("grf")
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 1)
+  BATCH_LIST=$(seq 1 2)
 
   MEMO=5G
 
@@ -63,7 +63,7 @@ for BATCH in $BATCH_LIST; do
           # Print order
           echo $ORD
           # Submit order
-          $ORD
+#          $ORD
           # Run command now
           #./$SCRIPT
           
