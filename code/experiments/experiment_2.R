@@ -40,7 +40,7 @@ if(parse_input) {
 
 } else {
     dataset <- "METABRIC"
-    surv_model_type <- "rf"
+    surv_model_type <- "grf"
     cens_model_type <- "grf"
     train_prop_sub = 1
     batch <- 1
@@ -97,8 +97,13 @@ cat("Output file name:", output_file, "\n")
 
 data <- load_csv(dataset)
 
-# Transform factors in to dummies
+## Transform factors in to dummies
 data <- as_tibble(model.matrix(~ . - 1, data = data))
+
+## Remove redundant features
+cor_matrix <- cor(data, use = "pairwise.complete.obs")
+high_cor <- caret::findCorrelation(cor_matrix, cutoff = 0.9)  # Correlation threshold
+data <- data[, -high_cor]
 
 ## Data features
 num_features <- ncol(data) - 2

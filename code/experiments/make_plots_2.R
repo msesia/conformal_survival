@@ -32,35 +32,43 @@ method.labels <- c("Oracle", "Uncalibrated", "Naive CQR", "KM Decensoring",
 
 results <- load_data()
 
-df <- results %>%    
-    filter(Method %in% method.values) %>%
-    mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
-    pivot_longer(c("Coverage (lower bound)", "Coverage (upper bound)", "Mean lower bound"), names_to="metric", values_to="value") %>%
-    group_by(dataset, surv_model_type, cens_model_type, train_prop_sub, alpha, Method, metric) %>%
-    summarise(value.mean = mean(value), value.se = 2*sd(value)/sqrt(n())) %>%
-    ##    mutate(value = sprintf("%.2f (%.2f)", value.mean, value.se)) %>%
-    mutate(value = value.mean) %>%
-    select(-value.mean, -value.se) %>%
-    pivot_wider(names_from = metric, values_from = value) %>%
-    mutate(Coverage.point = round(0.5*(as.numeric(`Coverage (lower bound)`) + as.numeric(`Coverage (upper bound)`)),2)) %>%    
-    mutate(
-        Coverage = ifelse(Coverage.point < 0.9,
-                          sprintf("\\textcolor{red}{%.2f (%.2f--%.2f})", Coverage.point, `Coverage (lower bound)`, `Coverage (upper bound)`),
-                          sprintf("%.2f (%.2f--%.2f)", Coverage.point, `Coverage (lower bound)`, `Coverage (upper bound)`)),
-        `Mean LPB` = sprintf("%.2f", `Mean lower bound`)
-    ) %>%
-    select(-`Coverage (lower bound)`, -`Coverage (upper bound)`)
 
-df.tab <- df %>% filter(train_prop_sub==1, surv_model_type=="rf") %>%
-    ungroup() %>%
-    select(-surv_model_type, -cens_model_type, -train_prop_sub, -alpha) %>%
-    select(dataset, Method, Coverage, `Mean LPB`) %>%
-    arrange(dataset, Method)
+make_table_small <- function(surv_model_plot) {
 
-df.tab %>%
-    select(-dataset) %>%
-    kable("latex", booktabs = TRUE, longtable = FALSE, align = "c", escape = FALSE) %>%
-    kable_styling(latex_options = c("hold_position", "repeat_header")) %>%
-    group_rows(index = table(df.tab$dataset))    
+    df <- results %>%    
+        filter(Method %in% method.values) %>%
+        mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
+        mutate(Lower = `Coverage (lower bound)`, Upper=`Coverage (upper bound)`, LPB=`Mean lower bound`) %>%
+        pivot_longer(c(Lower, Upper, LPB), names_to="metric", values_to="value") %>%
+        group_by(dataset, surv_model_type, cens_model_type, train_prop_sub, alpha, Method, metric) %>%
+        summarise(mean = mean(value), se = 2*sd(value)/sqrt(n())) %>%
+        pivot_wider(names_from = metric, values_from = c(mean,se)) %>%
+        mutate(mean_Point=0.5*(mean_Lower+mean_Upper), se_Point=sqrt(se_Lower^2+se_Upper^2)/2) %>%
+        mutate(
+            Coverage = ifelse(mean_Point+se_Point < 0.9,
+                              sprintf("\\textcolor{red}{%.2f (%.2f--%.2f})", mean_Point, mean_Lower, mean_Upper),
+                              sprintf("%.2f (%.2f--%.2f)", mean_Point, mean_Lower, mean_Upper)),
+            `Mean LPB` = sprintf("%.2f", mean_LPB)
+        ) %>%
+        select(-mean_Point, -mean_Lower, -mean_Upper, -se_Point, -se_LPB, -se_Lower, -se_Upper)
+    
+    df.tab <- df %>% filter(train_prop_sub==1, surv_model_type==surv_model_plot) %>%
+        ungroup() %>%
+        select(-surv_model_type, -cens_model_type, -train_prop_sub, -alpha) %>%
+        select(dataset, Method, Coverage, `Mean LPB`) %>%
+        arrange(dataset, Method)
 
+    latex_table <- df.tab %>%
+        select(-dataset) %>%
+        kable("latex", booktabs = TRUE, longtable = FALSE, align = "c", escape = FALSE) %>%
+        kable_styling(latex_options = c("hold_position", "repeat_header")) %>%
+        group_rows(index = table(df.tab$dataset))
 
+    output_file <- sprintf("tables/table_data_%s_small.tex", surv_model_plot)
+    writeLines(latex_table, output_file)
+
+}
+
+for(surv_model_plot in c("grf", "cox", "survreg", "rf")) {
+    make_table_small(surv_model_plot)
+}
