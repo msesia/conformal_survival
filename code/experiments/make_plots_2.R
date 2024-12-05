@@ -41,7 +41,7 @@ make_table_small <- function(surv_model_plot) {
         mutate(Lower = `Coverage (lower bound)`, Upper=`Coverage (upper bound)`, LPB=`Mean lower bound`) %>%
         pivot_longer(c(Lower, Upper, LPB), names_to="metric", values_to="value") %>%
         group_by(dataset, surv_model_type, cens_model_type, train_prop_sub, alpha, Method, metric) %>%
-        summarise(mean = mean(value), se = 2*sd(value)/sqrt(n())) %>%
+        summarise(mean = mean(value, na.rm=T), se = 2*sd(value, na.rm=T)/sqrt(n())) %>%
         pivot_wider(names_from = metric, values_from = c(mean,se)) %>%
         mutate(mean_Point=0.5*(mean_Lower+mean_Upper), se_Point=sqrt(se_Lower^2+se_Upper^2)/2) %>%
         mutate(

@@ -1,9 +1,9 @@
 # Load required libraries
 suppressMessages(library(tidyverse))
-library(survival)
+suppressMessages(library(survival))
 
 ## Source utility functions for data generation and analysis
-source("../conf_surv/utils_real_data.R")
+source("utils_real_data.R")
 source("../conf_surv/utils_survival.R")
 source("../conf_surv/utils_censoring.R")
 source("../conf_surv/utils_conformal.R")
@@ -96,14 +96,6 @@ cat("Output file name:", output_file, "\n")
 ############################
 
 data <- load_csv(dataset)
-
-## Transform factors in to dummies
-data <- as_tibble(model.matrix(~ . - 1, data = data))
-
-## Remove redundant features
-cor_matrix <- cor(data, use = "pairwise.complete.obs")
-high_cor <- caret::findCorrelation(cor_matrix, cutoff = 0.9)  # Correlation threshold
-data <- data[, -high_cor]
 
 ## Data features
 num_features <- ncol(data) - 2
