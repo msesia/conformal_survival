@@ -40,7 +40,7 @@ if(parse_input) {
 
 } else {
     dataset <- "METABRIC"
-    surv_model_type <- "grf"
+    surv_model_type <- "rf"
     cens_model_type <- "grf"
     train_prop_sub = 1
     batch <- 1
@@ -97,11 +97,15 @@ cat("Output file name:", output_file, "\n")
 
 data <- load_csv(dataset)
 
-col.names <- c("time", "status", paste("X", 1:(ncol(data)-2), sep = ""))
-colnames(data) <- col.names
+# Transform factors in to dummies
+data <- as_tibble(model.matrix(~ . - 1, data = data))
 
 ## Data features
 num_features <- ncol(data) - 2
+
+# Rename the columns
+col.names <- c("time", "status", paste("X", 1:num_features, sep = ""))
+colnames(data) <- col.names
 
 ## Use all features
 num_feat_censor <- num_features

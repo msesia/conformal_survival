@@ -378,7 +378,7 @@ randomForestSRC_SurvivalWrapper <- R6::R6Class("randomForestSRC_SurvivalWrapper"
         stop("The left-hand side of the formula must be a survival object (Surv(time, status)).")
       }
       # Fit the survival forest model using randomForestSRC
-      self$model <- randomForestSRC::rfsrc(formula, data = data, ntree = ntree, ...)
+      self$model <- randomForestSRC::rfsrc(formula, data = data, ntree = ntree, save.memory=TRUE, ...)
 
       # Store the failure times from the model
       self$time.points <- self$model$time.interest

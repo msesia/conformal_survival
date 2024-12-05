@@ -14,7 +14,7 @@ if [[ $SETUP == 0 ]]; then
   # Subsampling for training set
   TRAIN_PROP_LIST=(1.0)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 4)
+  BATCH_LIST=$(seq 1 1)
 
   MEMO=5G
 

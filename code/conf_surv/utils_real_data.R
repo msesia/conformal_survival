@@ -146,7 +146,8 @@ load_csv <- function(data.name) {
                              `Tumor Size` = col_double(),
                              `Tumor Stage` = col_double()
                          )
-                         )
+                         ) %>%
+            mutate(time = pmax(0.001, time))            
     } else {
         data <- NULL
     }
