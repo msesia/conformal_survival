@@ -17,7 +17,7 @@ source("../conf_surv/utils_decensoring.R")
 # VALCT: Lung cancer trial data (137 obs, 6 vars, from survival::veteran).
 # PBC: Liver disease data (137 obs, 6 vars, from survival::pbc, NAs imputed).
 # GBSG: Breast cancer data (2232 obs, 7 vars, combined train/test).
-# METABRIC: Breast cancer clinical data (1981 obs, 26 vars).
+# METABRIC: Breast cancer clinical data (1981 obs, 25 vars).
 
 ## Flag to determine if input should be parsed from command line
 parse_input <- TRUE
@@ -38,9 +38,9 @@ if(parse_input) {
     batch <- as.integer(args[4])
 
 } else {
-    dataset <- "VALCT"
+    dataset <- "METABRIC"
     surv_model_type <- "grf"
-    cens_model_type <- "cox"
+    cens_model_type <- "grf"
     batch <- 1
 }
 
@@ -91,7 +91,10 @@ cat("Output file name:", output_file, "\n")
 # Define data distribution #
 ############################
 
-data <- read_csv(sprintf("../../data/%s.csv", dataset))
+data <- load_csv(dataset)
+
+col.names <- c("time", "status", paste("X", 1:(ncol(data)-2), sep = ""))
+colnames(data) <- col.names
 
 ## Data features
 num_features <- ncol(data) - 2
