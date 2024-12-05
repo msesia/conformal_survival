@@ -48,6 +48,12 @@ load_data <- function(dataset.name) {
         df <- NULL
         return(NULL)
     }
+
+    ## Replace zero survival times with half of smallest observed value
+    min.time.nnz <- min(df$time[df$time>0])
+    df <- df %>% 
+        mutate(time = pmax(0.5*min.time.nnz, time))
+
     ## Impute NAs with median for numeric and mode for non-numeric
     df <- df %>%
         mutate(across(
@@ -63,12 +69,7 @@ load_data <- function(dataset.name) {
     }) & sapply(df, function(col) {
         length(unique(col)) == 1
     }))]
-    
-    ## Replace zero survival times with half of smallest observed value
-    min.time.nnz <- min(df$time[df$time>0])
-    df <- df %>% 
-        mutate(time = pmax(0.5*min.time.nnz, time))
-    
+       
     ## Transform factors in to dummies
     df <- as_tibble(model.matrix(~ . - 1, data = df))
     ## Remove redundant features
@@ -80,9 +81,24 @@ load_data <- function(dataset.name) {
         }
     }
 
+    remove_rare_binary <- function(df, threshold = 0.02) {
+        df[, !sapply(df, function(col) {
+            ## Ensure the column is binary
+            if (length(unique(col)) == 2) {
+                ## Calculate the frequency of each value
+                freq_table <- table(col)
+                min_freq <- min(freq_table) / sum(freq_table)
+                ## Return TRUE if the minor value frequency is below the threshold
+                return(min_freq < threshold)
+            }
+            return(FALSE)  # Not binary
+        })]
+    }
+    df <- remove_rare_binary(df, threshold = 0.02)
+    
     ## Remove highly correlated features
     cor_matrix <- cor(df, use = "pairwise.complete.obs")
-    high_cor <- caret::findCorrelation(cor_matrix, cutoff = 0.9)  # Correlation threshold
+    high_cor <- caret::findCorrelation(cor_matrix, cutoff = 0.75)  # Correlation threshold
     if(length(high_cor)>0) {
         df <- df[, -high_cor]
     }
