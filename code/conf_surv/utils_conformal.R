@@ -1,6 +1,6 @@
 library(tidyverse)
 
-evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=NULL, method=NULL) {
+evaluate_bounds <- function(observed_time, lower_bound, status=NULL, event_time=NULL, oracle=NULL, method=NULL) {
     coverage_observed <- mean(lower_bound <= observed_time)
     coverage_event_time <- NA
     mean_lower_bound_cover <- NA
@@ -13,6 +13,18 @@ evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=
             median_lower_bound_cover <- median(lower_bound[idx.cover])
         }
    }
+    ## Evaluate lower and upper bounds on coverage
+    coverage_lower <- mean(lower_bound <= observed_time)
+    if(!is.null(status)) {
+        idx.status <- which(status==TRUE)
+        if(length(idx.status)>0) {
+            coverage_upper <- 1-mean(lower_bound[idx.status] > observed_time[idx.status]) * mean(status==TRUE)
+        } else {
+            coverage_upper <- NA
+        }
+    } else {
+        coverage_upper <- NA
+    }
     if(is.null(oracle)) {
         oracle_MSE <- NA
     } else {
@@ -26,6 +38,8 @@ evaluate_bounds <- function(observed_time, lower_bound, event_time=NULL, oracle=
 #                  "Mean lower bound (cover)"=mean_lower_bound_cover,
 #                  "Median lower bound (cover)"=median_lower_bound_cover,
                   "Coverage (event time)"=coverage_event_time,
+                  "Coverage (lower bound)"=coverage_lower,
+                  "Coverage (upper bound)"=coverage_upper,
 #                  "Oracle MSE" = oracle_MSE
     )
     if(!is.null(method)) {
