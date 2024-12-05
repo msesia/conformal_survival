@@ -27,7 +27,7 @@ if(parse_input) {
     args <- commandArgs(trailingOnly = TRUE)
 
     ## Checking if the correct number of arguments is provided
-    if (length(args) < 4) {
+    if (length(args) < 5) {
         stop("Insufficient arguments provided. Expected 4 arguments.")
     }
 
@@ -35,12 +35,14 @@ if(parse_input) {
     dataset <- args[1]
     surv_model_type <- args[2]
     cens_model_type <- args[3]
-    batch <- as.integer(args[4])
+    train_prop_sub <- as.double(args[4])
+    batch <- as.integer(args[5])
 
 } else {
     dataset <- "METABRIC"
     surv_model_type <- "grf"
     cens_model_type <- "grf"
+    train_prop_sub = 1
     batch <- 1
 }
 
@@ -74,6 +76,7 @@ fsc <- FALSE
 header <- tibble(dataset = dataset,
                  surv_model_type = surv_model_type,
                  cens_model_type = cens_model_type,
+                 train_prop_sub = train_prop_sub,
                  alpha = alpha,
                  batch = batch)
 
@@ -81,6 +84,7 @@ header <- tibble(dataset = dataset,
 output_file <- paste0("results/data/", dataset,
                       "_surv_", surv_model_type,
                       "_cens_", cens_model_type,
+                      "_train_", train_prop_sub,
                       "_batch", batch, ".txt")
 
 ## Print the output file name to verify
@@ -232,6 +236,9 @@ run_experiment <- function(random.state) {
     data.cal <- split_result$cal
     data.test <- split_result$test
 
+    ## Subsample the training set
+    data.train = data.train[sample(1:nrow(data.train), ceiling(train_prop_sub*nrow(data.train))),]
+    
     ## Compute prediction lower bounds
     predictions <- analyze_data(data.train, data.cal, data.test, surv_model, cens_model)
 
