@@ -5,7 +5,7 @@ SETUP=0
 
 if [[ $SETUP == 0 ]]; then
   # Data distribution setting
-  DATA_LIST=("VALCT" "PBC" "GBSG" "METABRIC" "OVARIAN" "BMT" "GBSG2")
+  DATA_LIST=("VALCT" "PBC" "GBSG" "METABRIC" "COLON" "HEART" "RETINOPATHY")
   # Survival model types
   SURV_MODEL_TYPE_LIST=("grf" "rf" "cox" "survreg")
   #SURV_MODEL_TYPE_LIST=("cox")
@@ -13,8 +13,10 @@ if [[ $SETUP == 0 ]]; then
   CENS_MODEL_TYPE_LIST=("grf")
   # Subsampling for training set
   TRAIN_PROP_LIST=(1)
+  # Nominal levels
+  ALPHA_LIST=(0.05 0.1 0.2)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 1)
+  BATCH_LIST=$(seq 1 4)
 
   MEMO=5G
 
@@ -42,37 +44,39 @@ for BATCH in $BATCH_LIST; do
     for SURV_MODEL_TYPE in "${SURV_MODEL_TYPE_LIST[@]}"; do
       for CENS_MODEL_TYPE in "${CENS_MODEL_TYPE_LIST[@]}"; do
         for TRAIN_PROP in "${TRAIN_PROP_LIST[@]}"; do
+          for ALPHA in "${ALPHA_LIST[@]}"; do
 
-          # Generate a unique and interpretable file name based on the input parameters
-          JOBN="data/${DATA}_surv_${SURV_MODEL_TYPE}_cens_${CENS_MODEL_TYPE}_train_${TRAIN_PROP}_batch${BATCH}.txt"
-          OUT_FILE=$OUT_DIR"/"$JOBN
-          #ls $OUT_FILE
-          COMPLETE=0
+            # Generate a unique and interpretable file name based on the input parameters
+            JOBN="data/${DATA}_surv_${SURV_MODEL_TYPE}_cens_${CENS_MODEL_TYPE}_train_${TRAIN_PROP}_alpha_${ALPHA}_batch${BATCH}.txt"
+            OUT_FILE=$OUT_DIR"/"$JOBN
+            #ls $OUT_FILE
+            COMPLETE=0
 
-          if [[ -f $OUT_FILE ]]; then
-            COMPLETE=1
-          fi
+            if [[ -f $OUT_FILE ]]; then
+              COMPLETE=1
+            fi
 
-          if [[ $COMPLETE -eq 0 ]]; then
-            # R script to be run with command line arguments
-            SCRIPT="./experiment_2.sh $DATA $SURV_MODEL_TYPE $CENS_MODEL_TYPE $TRAIN_PROP $BATCH"
+            if [[ $COMPLETE -eq 0 ]]; then
+              # R script to be run with command line arguments
+              SCRIPT="./experiment_2.sh $DATA $SURV_MODEL_TYPE $CENS_MODEL_TYPE $TRAIN_PROP $ALPHA $BATCH"
 
-            # Define job name for this configuration
-            OUTF=$LOGS"/"$JOBN".out"
-            ERRF=$LOGS"/"$JOBN".err"
+              # Define job name for this configuration
+              OUTF=$LOGS"/"$JOBN".out"
+              ERRF=$LOGS"/"$JOBN".err"
 
-            # Assemble slurm order for this job
-            ORD=$ORDP" -J "$JOBN" -o "$OUTF" -e "$ERRF" $SCRIPT"
+              # Assemble slurm order for this job
+              ORD=$ORDP" -J "$JOBN" -o "$OUTF" -e "$ERRF" $SCRIPT"
 
-            # Print order
-            echo $ORD
-            # Submit order
-            $ORD
-            # Run command now
-            #./$SCRIPT
-            
-          fi
+              # Print order
+              echo $ORD
+              # Submit order
+              $ORD
+              # Run command now
+              #./$SCRIPT
+              
+            fi
 
+          done
         done
       done
     done
