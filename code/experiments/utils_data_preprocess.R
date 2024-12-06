@@ -12,70 +12,111 @@ get_mode <- function(x) {
     uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
 }
 
-
 preprocess_data <- function(df) {
-    if(is.null(df)) return(NULL)
+    if (is.null(df)) return(NULL)
 
-    ## Replace zero survival times with half of smallest observed value
-    min.time.nnz <- min(df$time[df$time>0])
+    ## Replace zero survival times with half of the smallest observed value
+    min.time.nnz <- min(df$time[df$time > 0], na.rm = TRUE)
     df <- df %>%
-        mutate(time = pmax(0.5*min.time.nnz, time))
+        mutate(time = pmax(0.5 * min.time.nnz, time))
 
     ## Impute NAs with median for numeric and mode for non-numeric
     df <- df %>%
         mutate(across(
             everything(),
-            ~ if_else(is.na(.),
-                      if (is.numeric(.)) median(., na.rm = TRUE) else get_mode(.),
-                      .),
-            .names = "{col}" # Optional: create imputed columns
+            ~ ifelse(is.na(.),
+                     ifelse(is.numeric(.), median(., na.rm = TRUE), get_mode(.)),
+                     .)
         ))
-    ## Remove columns with only one unique value (for factor or character columns)
-    df <- df[, !(sapply(df, function(col) {
-        is.character(col) || is.factor(col)
-    }) & sapply(df, function(col) {
-        length(unique(col)) == 1
-    }))]
 
-    ## Transform factors in to dummies
-    df <- as_tibble(model.matrix(~ . - 1, data = df))
-    ## Remove redundant features
+    ## Function to process factor/character columns
+    process_factors <- function(df, threshold = 0.02) {
+        df[] <- lapply(df, function(col) {
+            if (is.character(col)) {
+                col <- factor(col)  ## Convert characters to factors
+            }
+            if (is.factor(col)) {
+                freq_table <- prop.table(table(col))  ## Calculate level frequencies
+                rare_levels <- names(freq_table[freq_table < threshold])
+
+                ## Handle binary factors
+                if (length(levels(col)) == 2) {
+                    if (length(rare_levels) == 1) {
+                        ## Return NULL for binary factors with rare levels
+                        return(NULL)
+                    }
+                }
+                ## Merge rare levels into "Other" for factors with more than two levels
+                if (length(rare_levels) > 0 && length(levels(col)) > 2) {
+                    levels(col) <- c(levels(col), "Other")
+                    col[col %in% rare_levels] <- "Other"
+                    col <- factor(col)  ## Drop unused levels
+                }
+            }
+            return(col)
+        })
+
+        ## Remove NULL columns (binary factors with rare levels removed)
+        df <- Filter(Negate(is.null), df)
+
+        ## Remove factors with fewer than 2 levels
+        df <- df[, sapply(df, function(col) !(is.factor(col) && length(levels(col)) < 2))]
+
+        return(as.data.frame(df))  ## Return as a data frame
+    }
+
+    ## Apply the function to clean the data frame
+    threshold <- 0.02  ## Minimum frequency for rare levels
+    df <- process_factors(df, threshold = threshold)
+
+    ## Transform factors into dummy variables
+    if (any(sapply(df, is.factor))) {  # Check if any factors exist before applying model.matrix
+        df <- as_tibble(model.matrix(~ . - 1, data = df))
+    }
+
+    ## Remove redundant features using alias check
     cox_model <- coxph(Surv(time, status) ~ ., data = df)
-    if(!is.null(alias(cox_model)$Complete)) {
+    if (!is.null(alias(cox_model)$Complete)) {
         alias_cols <- which(alias(cox_model)$Complete)
-        if(length(alias_cols)>0) {
-            df <- df[,-alias_cols]
+        if (length(alias_cols) > 0) {
+            df <- df[, -alias_cols]
         }
     }
 
-    remove_rare_binary <- function(df, threshold = 0.02) {
-        df[, !sapply(df, function(col) {
-            ## Ensure the column is binary
-            if (length(unique(col)) == 2) {
-                ## Calculate the frequency of each value
-                freq_table <- table(col)
-                min_freq <- min(freq_table) / sum(freq_table)
-                ## Return TRUE if the minor value frequency is below the threshold
-                return(min_freq < threshold)
-            }
-            return(FALSE)  # Not binary
-        })]
-    }
-    df <- remove_rare_binary(df, threshold = 0.02)
+    ## Function to remove highly correlated features
+    remove_highly_correlated <- function(df, excluded_columns = c("time", "status"), cutoff = 0.75) {
+        ## Identify columns to include in the correlation analysis
+        cor_columns <- setdiff(names(df), excluded_columns)
 
-    ## Remove highly correlated features
-    cor_matrix <- cor(df, use = "pairwise.complete.obs")
-    high_cor <- caret::findCorrelation(cor_matrix, cutoff = 0.75)  # Correlation threshold
-    if(length(high_cor)>0) {
-        df <- df[, -high_cor]
+        ## Iteratively remove highly correlated features
+        while (TRUE) {
+            ## Calculate the correlation matrix for the selected columns
+            cor_matrix <- cor(df[, cor_columns, drop = FALSE], use = "pairwise.complete.obs")
+
+            ## Find highly correlated features
+            high_cor <- caret::findCorrelation(cor_matrix, cutoff = cutoff, verbose = FALSE)
+
+            ## Break loop if no highly correlated features are found
+            if (length(high_cor) == 0) break
+
+            ## Remove the first correlated variable
+            cor_columns <- cor_columns[-high_cor[1]]
+        }
+
+        ## Return the updated data frame, retaining excluded columns
+        return(df[, c(excluded_columns, cor_columns)])
     }
 
-    ## Replace col names
-    col.names <- c("time", "status", paste("X", 1:(ncol(df)-2), sep = ""))
+    ## Apply the correlation filter
+    df <- remove_highly_correlated(df, excluded_columns = c("time", "status"), cutoff = 0.75)
+
+    ## Replace column names with consistent naming
+    col.names <- c("time", "status", paste0("X", seq_len(ncol(df) - 2)))
     colnames(df) <- col.names
 
     return(df)
 }
+
 
 load_data <- function(dataset.name) {
     if (dataset.name == "VALCT") {
@@ -87,19 +128,20 @@ load_data <- function(dataset.name) {
         ## 137 observations, 6 variables
         df <- survival::pbc |> select(time, status, everything()) %>% select(-id) %>%
                                    mutate(status = ifelse(status==0, 0, 1))
-    } else if (dataset.name=="OVARIAN") {
-        df <- survival::ovarian %>%
-            mutate(time=futime, status=fustat) %>%
-            select(time, status, age, resid.ds, rx, ecog.ps)
-    } else if (dataset.name=="BMT") {
-        data(bmt)
-        df <- bmt %>% mutate(time=t1, status=d1) %>%
-            select(time, status, group, starts_with("z"))
-    } else if (dataset.name=="GBSG2") {
-        df <- TH.data::GBSG2 %>%
-            mutate(status=cens) %>%
-            select(-cens) %>%
-            select(time, status, everything())        
+    } else if (dataset.name=="COLON") {
+        df <- survival::colon %>%
+            select(-id, -study, -etype) %>%
+            select(time, status, everything())
+    } else if (dataset.name=="HEART") {
+        df <- survival::heart %>%
+            mutate(time=stop-start, status=event) %>%
+            select(-id, -start, -stop, -event) %>%
+            select(time, status, everything())
+    } else if (dataset.name=="RETINOPATHY") {
+        df <- survival::retinopathy %>%
+            mutate(time=futime) %>%
+            select(-id, -futime) %>%
+            select(time, status, everything())
     } else if (dataset.name == "GBSG") {
         ifile <- "../../data/gbsg_cancer_train_test.h5"
         h5_file <- hdf5r::H5File$new(ifile, mode = "r")

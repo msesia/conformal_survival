@@ -67,8 +67,12 @@ predict_CQR <- function(data.test, surv_model, data.cal, alpha) {
     # Calculate the (1-alpha) quantile of the scores (with finite-sample correction)
     n <- length(scores)
     percentile_scores <- (1 - alpha) * (1+1/n)
-    calibration <- as.numeric(quantile(scores, probs = percentile_scores, type = 1))
-
+    if(percentile_scores<1) {
+        calibration <- as.numeric(quantile(scores, probs = percentile_scores, type = 1))
+    } else {
+        calibration <- Inf
+    }
+    
     ## Prediction for test data
 
     # Predict the survival quantiles for the given nominal percentile
