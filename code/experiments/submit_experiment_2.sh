@@ -5,7 +5,7 @@ SETUP=0
 
 if [[ $SETUP == 0 ]]; then
   # Data distribution setting
-  DATA_LIST=("VALCT" "PBC" "GBSG" "METABRIC")
+  DATA_LIST=("VALCT" "PBC" "GBSG" "METABRIC" "OVARIAN" "BMT" "GBSG2")
   # Survival model types
   SURV_MODEL_TYPE_LIST=("grf" "rf" "cox" "survreg")
   #SURV_MODEL_TYPE_LIST=("cox")
@@ -14,7 +14,7 @@ if [[ $SETUP == 0 ]]; then
   # Subsampling for training set
   TRAIN_PROP_LIST=(1)
   # Sequence of batches for parallel simulation
-  BATCH_LIST=$(seq 1 4)
+  BATCH_LIST=$(seq 1 1)
 
   MEMO=5G
 

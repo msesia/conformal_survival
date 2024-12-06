@@ -3,7 +3,7 @@ suppressMessages(library(tidyverse))
 suppressMessages(library(survival))
 
 ## Source utility functions for data generation and analysis
-source("utils_real_data.R")
+source("utils_data.R")
 source("../conf_surv/utils_survival.R")
 source("../conf_surv/utils_censoring.R")
 source("../conf_surv/utils_conformal.R")
