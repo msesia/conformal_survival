@@ -45,7 +45,7 @@ make_table_small <- function(surv_model_plot) {
         pivot_wider(names_from = metric, values_from = c(mean,se)) %>%
         mutate(mean_Point=0.5*(mean_Lower+mean_Upper), se_Point=sqrt(se_Lower^2+se_Upper^2)/2) %>%
         mutate(
-            Coverage = ifelse(mean_Point+se_Point < 0.9,
+            `Estimated Coverage` = ifelse(mean_Point+se_Point < 0.9,
                               sprintf("\\textcolor{red}{%.2f (%.2f--%.2f})", mean_Point, mean_Lower, mean_Upper),
                               sprintf("%.2f (%.2f--%.2f)", mean_Point, mean_Lower, mean_Upper)),
             `Mean LPB` = sprintf("%.2f", mean_LPB)
@@ -55,7 +55,7 @@ make_table_small <- function(surv_model_plot) {
     df.tab <- df %>% filter(train_prop_sub==1, surv_model_type==surv_model_plot) %>%
         ungroup() %>%
         select(-surv_model_type, -cens_model_type, -train_prop_sub, -alpha) %>%
-        select(dataset, Method, Coverage, `Mean LPB`) %>%
+        select(dataset, Method, `Estimated Coverage`, `Mean LPB`) %>%
         arrange(dataset, Method)
 
     latex_table <- df.tab %>%
