@@ -59,13 +59,15 @@ make_table_small <- function(surv_model_plot, alpha_plot=0.1) {
         select(dataset, Method, `Estimated Coverage`, `Mean LPB`) %>%
         arrange(dataset, Method)
 
+    caption.text <- "Caption \\label{tab:1}"
+    
     latex_table <- df.tab %>%
         select(-dataset) %>%
-        kable("latex", booktabs = TRUE, longtable = FALSE, align = "c", escape = FALSE) %>%
+        kable("latex", booktabs = TRUE, longtable = FALSE, align = "c", escape = FALSE, caption = caption.text) %>%
         kable_styling(latex_options = c("hold_position", "repeat_header")) %>%
         group_rows(index = table(df.tab$dataset))
 
-    output_file <- sprintf("tables/table_data_%s_alpha_%s_small.tex", surv_model_plot, alpha_plot)
+    output_file <- sprintf("../../../paper/tables/table_data_%s_alpha_%s_small.tex", surv_model_plot, alpha_plot)
     writeLines(latex_table, output_file)
 
 }
@@ -77,30 +79,42 @@ make_table_large <- function(surv_model_plot, alpha_plot=0.1) {
         filter(Method %in% method.values) %>%
         mutate(Method = factor(Method, levels = method.values, labels = method.labels)) %>%
         mutate(LPB=`Mean lower bound`)  %>%
-        pivot_longer(c(`Coverage (lower bound)`,`Coverage (upper bound)`, LPB), names_to="metric", values_to="value") %>%
+        pivot_longer(c(`Coverage (lower bound)`,`Coverage (upper bound)`,LPB), names_to="metric", values_to="value") %>%
         group_by(dataset, surv_model_type, cens_model_type, train_prop_sub, alpha, Method, metric) %>%
         summarise(mean = mean(value, na.rm=T), se = 2*sd(value, na.rm=T)/sqrt(n())) %>%
         pivot_wider(names_from = metric, values_from = c(mean,se)) %>%
-        mutate(`Coverage (lower bound)` = sprintf("%.2f (%.2f)", `mean_Coverage (lower bound)`, `se_Coverage (lower bound)`),
+        mutate(mean_Point=0.5*(`mean_Coverage (lower bound)`+`mean_Coverage (upper bound)`),
+               se_Point=sqrt(`se_Coverage (lower bound)`^2+`se_Coverage (upper bound)`^2)/2) %>%
+        mutate(`Coverage (point)` = ifelse(mean_Point + se_Point < 1 - alpha_plot,
+                                           sprintf("\\textcolor{red}{%.2f (%.2f)}", mean_Point, se_Point),
+                                           sprintf("\\textcolor{black}{%.2f (%.2f)}", mean_Point, se_Point)),
+               `Coverage (lower bound)` = sprintf("%.2f (%.2f)", `mean_Coverage (lower bound)`, `se_Coverage (lower bound)`),
                `Coverage (upper bound)` = sprintf("%.2f (%.2f)", `mean_Coverage (upper bound)`, `se_Coverage (upper bound)`),
                `LPB` = sprintf("%.2f (%.2f)", `mean_LPB`, `se_LPB`)) %>%
-        select(`Coverage (lower bound)`, `Coverage (upper bound)`, LPB)
+        select(`Coverage (point)`, `Coverage (lower bound)`, `Coverage (upper bound)`, LPB)
 
-    df.tab <- df %>% filter(train_prop_sub==1, surv_model_type==surv_model_plot) %>%
+    df.tab <- df %>% 
+        filter(train_prop_sub == 1, surv_model_type == surv_model_plot) %>%
         ungroup() %>%
         select(-surv_model_type, -cens_model_type, -train_prop_sub, -alpha) %>%
-        select(dataset, Method, `Coverage (lower bound)`, `Coverage (upper bound)`, LPB) %>%
+        rename_with(~ c("Point", "Lower bound", "Upper bound")[match(., c("Coverage (point)", "Coverage (lower bound)", "Coverage (upper bound)"))], 
+                    c("Coverage (point)", "Coverage (lower bound)", "Coverage (upper bound)")) %>%
         arrange(dataset, Method)
+    
+    caption.text <- sprintf("Performance on seven publicly available data sets of different methods for constructing survival LPBs. All methods utilize the same survival model (%s) and aim for %d\\%% coverage. Since the performance is evaluated on a censored test set, the coverage cannot be evaluated exactly. Instead, we report empirical lower and upper bounds for the true coverage. Values in parentheses represent twice the standard error. Coverage point estimates that are more than two standard errors below the nominal level are highlighted in red. \\label{tab:data-%s-large-alpha%s}", surv_model_plot, 100*(1-alpha_plot), surv_model_plot, alpha_plot)
 
     latex_table <- df.tab %>%
         select(-dataset) %>%
-        kable("latex", booktabs = TRUE, longtable = FALSE, align = "c", escape = FALSE) %>%
+        kable("latex", booktabs = TRUE, longtable = FALSE, align = "c", escape = FALSE, caption = caption.text) %>%
         kable_styling(latex_options = c("hold_position", "repeat_header")) %>%
+        add_header_above(c(" " = 1, "Estimated Coverage" = 3, " " = 1)) %>%
+#        add_header_above(c(" " = 1, " " = 3, "LPB" = 1)) %>%
         group_rows(index = table(df.tab$dataset))
-
-    output_file <- sprintf("tables/table_data_%s_alpha_%s_large.tex", surv_model_plot, alpha_plot)
+    
+    output_file <- sprintf("../../../paper/tables/table_data_%s_alpha_%s_large.tex", surv_model_plot, alpha_plot)
     writeLines(latex_table, output_file)
 
+##    cat(sprintf("%s\n",output_file))
 }
 
 

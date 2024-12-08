@@ -20,8 +20,8 @@ method_colors <- c(
   "Prototype (Candes, oracle censoring model)" = "blue",
   "Prototype (Candes)" = "blue4",
   "Prototype (Gui et al., oracle censoring model)" = "green",
-  "DR-COSAR (fixed)" = "green3",
-  "DR-COSAR (adaptive)" = "green4"
+  "DR-COSARC (fixed)" = "green3",
+  "DR-COSARC (adaptive)" = "green4"
 )
 
 method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
@@ -37,8 +37,8 @@ method.labels <- c("Oracle", "Uncalibrated", "Naive CQR", "KM Decensoring",
 #                   "Prototype (Candes, oracle)",
 #                   "Prototype (Candes)",
 #                   "Prototype (Gui et al., oracle)",
-                   "DR-COSAR (fixed)",
-                   "DR-COSAR (adaptive)"                   
+                   "DR-COSARC (fixed)",
+                   "DR-COSARC (adaptive)"                   
                    )
 
 setting.values <- c(8,7,10,9,1:6)
