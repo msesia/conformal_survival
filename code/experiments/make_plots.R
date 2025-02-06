@@ -17,9 +17,9 @@ method_colors <- c(
   "Uncalibrated" = "grey",
   "Naive CQR" = "orchid1",
   "KM Decensoring" = "tan2",
-  "Prototype (Candes, oracle censoring model)" = "blue",
-  "Prototype (Candes)" = "blue4",
-  "Prototype (Gui et al., oracle censoring model)" = "green",
+  "Drcosarc (Candes, oracle censoring model)" = "blue",
+  "Drcosarc (Candes)" = "blue4",
+  "Drcosarc (Gui et al., oracle censoring model)" = "green",
   "DR-COSARC (fixed)" = "green3",
   "DR-COSARC (adaptive)" = "green4"
 )
@@ -28,15 +28,15 @@ method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
 #                   "candes.oracle",
 #                   "gui.oracle",
 #                   "gui.oracle.cqr",
-                   "prototype.candes",
-                   "prototype.gui"
-#                   "prototype.gui.cqr",                   
+                   "drcosarc.candes",
+                   "drcosarc.gui"
+#                   "drcosarc.gui.cqr",                   
                    )
 
 method.labels <- c("Oracle", "Uncalibrated", "Naive CQR", "KM Decensoring",
-#                   "Prototype (Candes, oracle)",
-#                   "Prototype (Candes)",
-#                   "Prototype (Gui et al., oracle)",
+#                   "Drcosarc (Candes, oracle)",
+#                   "Drcosarc (Candes)",
+#                   "Drcosarc (Gui et al., oracle)",
                    "DR-COSARC (fixed)",
                    "DR-COSARC (adaptive)"                   
                    )
@@ -366,12 +366,12 @@ method_shapes <- c(
   "Qi et al." = 15, # Square (same as CQR)
   "Candes (oracle)" = 16,  # Circle
   "Candes (oracle, tuned)" = 16,  # Circle
-  "Candes (prototype)" = 18, # Diamond
-  "Candes (prototype, tuned)" = 18, # Diamond
+  "Candes (drcosarc)" = 18, # Diamond
+  "Candes (drcosarc, tuned)" = 18, # Diamond
   "Gui et al. (oracle)" = 19, # Filled circle
   "Gui et al. (oracle, cqr)" = 15, # Square
-  "Gui et al. (prototype)" = 18, # Diamond (same as Candes prototype)
-  "Gui et al. (prototype, cqr)" = 15 # Square
+  "Gui et al. (drcosarc)" = 18, # Diamond (same as Candes drcosarc)
+  "Gui et al. (drcosarc, cqr)" = 15 # Square
 )
 
 

@@ -354,18 +354,18 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         predictions$gui.oracle.cqr <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=TRUE, finite_sample_correction=fsc)
     }
 
-    ## Apply prototype (Candes, with fixed c0)
-    predictions$prototype.candes <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="candes-fixed")
+    ## Apply drcosarc (Candes, with fixed c0)
+    predictions$drcosarc.candes <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="candes-fixed")
 
-    ## ## ## Apply prototype (Candes, with tuned c0)
+    ## ## ## Apply drcosarc (Candes, with tuned c0)
     ## tuning.package <- list(data.train = data.train)
-    ## predictions$prototype.candes.tuned <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, tuning.package=tuning.package, cutoffs="candes-tuning")
+    ## predictions$drcosarc.candes.tuned <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, tuning.package=tuning.package, cutoffs="candes-tuning")
 
-    ## Apply prototype (Gui)
-    predictions$prototype.gui <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive", finite_sample_correction=fsc)
+    ## Apply drcosarc (Gui)
+    predictions$drcosarc.gui <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive", finite_sample_correction=fsc)
 
-    ## Apply prototype (Gui, CQR)
-    predictions$prototype.gui.cqr <- predict_prototype(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive-cqr")   
+    ## Apply drcosarc (Gui, CQR)
+    predictions$drcosarc.gui.cqr <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive-cqr")   
 
     return(predictions)
 }

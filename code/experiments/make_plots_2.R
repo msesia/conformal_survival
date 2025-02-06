@@ -16,15 +16,15 @@ method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
 #                   "candes.oracle",
 #                   "gui.oracle",
 #                   "gui.oracle.cqr",
-#                   "prototype.candes",
-                   "prototype.gui"
-#                   "prototype.gui.cqr",
+#                   "drcosarc.candes",
+                   "drcosarc.gui"
+#                   "drcosarc.gui.cqr",
                    )
 
 method.labels <- c("Oracle", "Uncalibrated", "Naive CQR", "KM Decensoring",
-#                   "Prototype (Candes, oracle)",
-#                   "Prototype (Candes)",
-#                   "Prototype (Gui et al., oracle)",
+#                   "Drcosarc (Candes, oracle)",
+#                   "Drcosarc (Candes)",
+#                   "Drcosarc (Gui et al., oracle)",
 #                   "DR-COSARC (fixed)",
                    "DR-COSARC"
                    )

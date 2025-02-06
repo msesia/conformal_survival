@@ -72,7 +72,7 @@ predict_CQR <- function(data.test, surv_model, data.cal, alpha) {
     } else {
         calibration <- Inf
     }
-    
+
     ## Prediction for test data
 
     # Predict the survival quantiles for the given nominal percentile
@@ -248,7 +248,7 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 }
 
 
-predict_prototype <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive",
+predict_drcosarc <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive",
                               finite_sample_correction = FALSE, doubly_robust = TRUE) {
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
