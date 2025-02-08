@@ -248,8 +248,7 @@ predict_Candes <- function(data.test, surv_model, cens_model, data.cal, C.cal, a
 }
 
 
-predict_drcosarc <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive",
-                              finite_sample_correction = FALSE, doubly_robust = TRUE) {
+impute_drcosarc <- function(data.cal, cens_imputator) {
     # Initialize the censoring times equal to the observed times
     C.cal <- data.cal$time
 
@@ -266,12 +265,19 @@ predict_drcosarc <- function(data.test, surv_model, cens_imputator, data.cal, al
         C.cal[idx.event] <- cens_imputator$sample(data.cal[idx.event,], T=Y.cal[idx.event])
     }
 
+    return(C.cal)
+}
+
+predict_drcosarc <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive",
+                              finite_sample_correction = FALSE, doubly_robust = TRUE, alpha_hat_values = NULL) {
+    
+    ## Impute the missing censoring times for calibration data
+    C.cal <- impute_drcosarc(data.cal, cens_imputator)
+
     if(cutoffs=="adaptive") {
         ## Apply Gui's method using the imputed censoring times
-        pred.calibrated <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, finite_sample_correction=finite_sample_correction)
-    } else if(cutoffs=="adaptive-cqr") {
-        ## Apply Gui's method using the imputed censoring times
-        pred.calibrated <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, use_cqr=TRUE, finite_sample_correction=finite_sample_correction)
+        pred.calibrated <- predict_Gui(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, finite_sample_correction=finite_sample_correction,
+                                       alpha_hat_values = alpha_hat_values)
     } else if (cutoffs=="candes-fixed") {
         ## Apply Candes' method using the imputed censoring times
         pred.calibrated <- predict_Candes(data.test, surv_model, cens_imputator$model, data.cal, C.cal, alpha, c0=c0)
@@ -305,22 +311,16 @@ predict_drcosarc <- function(data.test, surv_model, cens_imputator, data.cal, al
 }
 
 
-predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_cqr=FALSE, use_censoring_model=TRUE,
-                        finite_sample_correction = TRUE) {
-
+compute_alpha_hat_Gui <- function(data.cal, C.cal, surv_model, cens_model, num_a, shift=0, use_censoring_model=TRUE, use_cqr=FALSE, alpha_cqr=NULL) {
     Y.cal <- data.cal$time
     num_cal <- nrow(data.cal)
-    num_test <- nrow(data.test)
 
-    ## Number of distinct values for tuning parameter alpha
-    num_a <- 200
-
-    ## List of percentiles for estimated survival distribution (if not using CQR)
+    ## List of percentiles for estimated survival distribution
     probs <- seq(0.01, 0.99, length.out=num_a)
 
     ## List of shifts to correct CQR predictions
     shifts <- seq(0, 1, length.out=num_a)
-
+    
     ## Estimate miscoverage as a function of calibration parameter a
     estimate_alpha_hat <- function(num_a) {
         ## Construct sequences of predictions based on parameters a
@@ -335,7 +335,8 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
                 pred.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
             }
         } else {
-            pred.cal.raw <- as.numeric(surv_model$predict_quantiles(data.cal, probs = alpha)[[1]])
+            stopifnot(!is.null(alpha_cqr))
+            pred.cal.raw <- as.numeric(surv_model$predict_quantiles(data.cal, probs = alpha_cqr)[[1]])
             max.shift <- max(pred.cal.raw)
             shifts.mat <- matrix(shifts, num_cal, length(shifts), byrow = TRUE)
             pred.cal.raw <- matrix(pred.cal.raw, nrow = length(pred.cal.raw), ncol = length(shifts))
@@ -367,8 +368,34 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
 
     alpha_hat_values <- estimate_alpha_hat(num_a)
 
-    ##plot(1:num_a, alpha_hat_values)
+    return(alpha_hat_values)
+}
 
+predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_censoring_model=TRUE, finite_sample_correction = TRUE,
+                        alpha_hat_values = NULL, use_cqr=FALSE) {
+
+    Y.cal <- data.cal$time
+    num_cal <- nrow(data.cal)
+    num_test <- nrow(data.test)
+
+    if(is.null(alpha_hat_values)) {
+        ## Number of distinct values for tuning parameter alpha
+        num_a <- 200
+
+        ## List of percentiles for estimated survival distribution
+        probs <- seq(0.01, 0.99, length.out=num_a)
+        
+        ## Compute alpha_hat values
+        alpha_hat_values <- compute_alpha_hat_Gui(data.cal, C.cal, surv_model, cens_model, num_a, shift=0, use_censoring_model=use_censoring_model,
+                                                  use_cqr=use_cqr, alpha_cqr=alpha)
+    } else {
+        num_a <- length(alpha_hat_values)
+        ## List of percentiles for estimated survival distribution
+        probs <- seq(0.01, 0.99, length.out=num_a)
+    }
+        
+    ##plot(1:num_a, alpha_hat_values)
+    
     ## Find the smallest a such that alpha_hat(a) < alpha
     if(finite_sample_correction) {
         alpha_adjusted <- alpha - (1-alpha)/num_cal - (1) / sqrt(num_cal)
@@ -377,8 +404,7 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
         alpha_adjusted <- alpha
     }
 
-    idx.valid <- which(alpha_hat_values<=alpha_adjusted)
-
+    idx.valid <- which(alpha_hat_values<=alpha_adjusted)    
 
     ## Make predictions for test data
     if(!use_cqr) {
@@ -392,13 +418,15 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
         }
 
     } else {
+        ## List of shifts to correct CQR predictions
+        shifts <- seq(0, 1, length.out=num_a)
+        
         shifts.mat <- matrix(shifts, num_cal, length(shifts), byrow = TRUE)
         pred.test.raw <- as.numeric(surv_model$predict_quantiles(data.test, probs = alpha)[[1]])
         pred.test.raw <- matrix(pred.test.raw, nrow = length(pred.test.raw), ncol = length(shifts))
         shifts.mat <- matrix(shifts, num_test, length(shifts), byrow = TRUE)
         pred.test <- pmax(pred.test.raw * shifts.mat, 0)
     }
-
 
     if(length(idx.valid)>0) {
         a.star <- max(idx.valid)
@@ -413,6 +441,6 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
             lower <- predict_Gui(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_cqr=TRUE, finite_sample_correction = finite_sample_correction)
         }
     }
-
+    
     return(lower)
 }
