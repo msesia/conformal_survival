@@ -3,7 +3,7 @@ options(width = 300)
 library(tidyverse)
 
 load_data <- function(setup) {
-    idir <- sprintf("results_hpc/setup_%d", setup)
+    idir <- sprintf("results_hpc/setup_%s", setup)
     ifile.list <- list.files(idir)
     results <- do.call("rbind", lapply(ifile.list, function(ifile) {
         df <- read_delim(sprintf("%s/%s", idir, ifile), delim=",", col_types=cols(), guess_max=2)
@@ -170,6 +170,45 @@ for(pps in 1:10) {
     make_boxplot(plot_setting=pps, plot_surv_model="grf", plot_cens_model="grf", plot_n_train=1000, plot_n_cal=1000)
     make_boxplot(plot_setting=pps, plot_cens_model="cox", plot_n_train=1000, plot_n_cal=1000)
 }
+
+
+make_figure_1b <- function(plot_surv_model=NULL, plot_cens_model="grf", plot_n_train=500, plot_n_cal=500) {
+    setting.list <- c(7,8,10)
+    df <- results %>% filter(setting %in% setting.list, surv_model_type==plot_surv_model)
+    out.file <- sprintf("figures/exp1b_fig1_bp_surv_%s_cens_%s_n%d_n%d.pdf",
+                        plot_surv_model, plot_cens_model, plot_n_train, plot_n_cal)
+    plot.height <- 3.5
+    summary <- df %>%
+        mutate(`Surv. model` = surv_model_type) %>%
+        filter(setting %in% setting.list, cens_model_type==plot_cens_model, n_train==plot_n_train, n_cal==plot_n_cal) %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha) %>%
+        mutate(`Mean lower bound` = `Mean lower bound` / mean(`Mean lower bound`[Method=="oracle"])) %>%
+        ungroup() %>%
+        pivot_longer(c("Coverage (event time)", "Mean lower bound"), names_to="metric", values_to="value") %>%
+        mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
+        filter(Method %in% method.values) %>%
+        mutate(Method = fct_rev(factor(Method, levels = method.values, labels = method.labels))) %>%
+        mutate(Setting = factor(setting, setting.values, setting.labels))
+    if(nrow(summary)==0) return(0)
+    df.limits <- tibble(metric=c("Coverage","Coverage", "Lower Bound", "Lower Bound"), value=c(0,1,0,1), Method="Oracle")
+    ## Plotting the data
+    if(nrow(summary)==0) return()
+    pp <- summary %>%
+        ggplot(aes(y = Method, x = value, color=Method)) +
+        geom_boxplot() +
+        scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
+        geom_vline(data = summary %>% filter(metric=="Coverage"), aes(xintercept = 1-alpha), linetype = "dashed", color="red") +
+        geom_point(data=df.limits, alpha=0) +
+        xlab("") +
+#        scale_x_continuous(breaks = seq(0, 1, by = 0.25)) +
+        facet_grid(Setting ~ alpha + metric, scales = "free", labeller = labeller(Setting = label_both, metric = label_value)) +
+        theme_bw() +
+        theme(legend.position = "none",
+              axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))    
+    ggsave(out.file, plot = pp, width = 12, height = plot.height, units = "in")
+}
+results <- load_data("1b")
+make_figure_1b(plot_cens_model="grf", plot_surv_model="grf", plot_n_train=1000, plot_n_cal=1000)
 
 
 
