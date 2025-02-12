@@ -216,9 +216,6 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     ## Apply drcosarc (Gui)
     predictions$drcosarc.gui <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive", finite_sample_correction=fsc)
 
-    ## Apply drcosarc (Gui, CQR)
-    predictions$drcosarc.gui.cqr <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive-cqr")
-
     return(predictions)
 }
 

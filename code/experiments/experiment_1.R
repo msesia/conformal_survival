@@ -21,12 +21,12 @@ if(parse_input) {
     args <- commandArgs(trailingOnly = TRUE)
     
     ## Checking if the correct number of arguments is provided
-    if (length(args) < 9) {
+    if (length(args) < 10) {
         stop("Insufficient arguments provided. Expected 7 arguments.")
     }
     
     ## Assigning command line arguments to variables
-    setup <- as.integer(args[1])
+    setup <- as.character(args[1])
     setting <- as.integer(args[2])
     surv_model_type <- args[3]
     cens_model_type <- args[4]
@@ -34,16 +34,19 @@ if(parse_input) {
     num_samples_train_cens <- as.integer(args[6])
     num_samples_cal <- as.integer(args[7])
     num_feat_censor <- as.integer(args[8])
-    batch <- as.integer(args[9])
+    alpha <- as.numeric(args[9])
+    batch <- as.integer(args[10])
 
 } else {
-    setup <- 1
+    setup <- "1"
     setting <- 3
     surv_model_type <- "grf"
     cens_model_type <- "cox"
     num_samples_train <- 200
+    num_samples_train_cens <- 200
     num_samples_cal <- 500
     num_feat_censor <- 10
+    alpha <- 0.1
     batch <- 1
 }
 
@@ -53,9 +56,6 @@ if(parse_input) {
 
 ## Test sample size
 num_samples_test <- 1000
-
-## Nominal level
-alpha <- 0.1
 
 ## Number of repetitions
 batch_size <- 10
@@ -88,6 +88,7 @@ output_file <- paste0("results/setup_", setup, "/",
                       "_trainc", num_samples_train_cens, 
                       "_cal", num_samples_cal, 
                       "_nfc", num_feat_censor,
+                      "_alpha", alpha,
                       "_batch", batch, ".txt")
 
 ## Print the output file name to verify
@@ -336,23 +337,23 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     ## Apply CQR with de-censoring
     predictions$cqr.decensor <- predict_decensoring(data.test, surv_model, km_fit, data.cal, alpha, R=10)
 
-    if(!is.null(C.cal.oracle)) {
-        ## Apply Candes' method with "oracle" censoring model (with fixed c0)
-        predictions$candes.oracle <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
+    ## if(!is.null(C.cal.oracle)) {
+    ##     ## Apply Candes' method with "oracle" censoring model (with fixed c0)
+    ##     predictions$candes.oracle <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha)
 
-        ## ## Apply Candes' method with "oracle" censoring model (with fixed c0)
-        ## if(!is.null(C.train.oracle)) {
-        ##     tuning.package.oracle <- list(data.train = data.train, C.train = C.train.oracle)
-        ##     predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha,
-        ##                                                       tuning.package=tuning.package.oracle)
-        ## }
+    ##     ## ## Apply Candes' method with "oracle" censoring model (with fixed c0)
+    ##     ## if(!is.null(C.train.oracle)) {
+    ##     ##     tuning.package.oracle <- list(data.train = data.train, C.train = C.train.oracle)
+    ##     ##     predictions$candes.oracle.tuned <- predict_Candes(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha,
+    ##     ##                                                       tuning.package=tuning.package.oracle)
+    ##     ## }
 
-        ## Apply Gui's method with "oracle" censoring model
-        predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=FALSE, use_censoring_model=TRUE,
-                                              finite_sample_correction=fsc)
-        ## Apply Gui's method with "oracle" censoring model, with CQR approach
-        predictions$gui.oracle.cqr <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=TRUE, finite_sample_correction=fsc)
-    }
+    ##     ## Apply Gui's method with "oracle" censoring model
+    ##     predictions$gui.oracle <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=FALSE, use_censoring_model=TRUE,
+    ##                                           finite_sample_correction=fsc)
+    ##     ## Apply Gui's method with "oracle" censoring model, with CQR approach
+    ##     predictions$gui.oracle.cqr <- predict_Gui(data.test, surv_model, generator$censoring, data.cal, C.cal.oracle, alpha, use_cqr=TRUE, finite_sample_correction=fsc)
+    ## }
 
     ## Apply drcosarc (Candes, with fixed c0)
     predictions$drcosarc.candes <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="candes-fixed")
@@ -363,9 +364,6 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
 
     ## Apply drcosarc (Gui)
     predictions$drcosarc.gui <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive", finite_sample_correction=fsc)
-
-    ## Apply drcosarc (Gui, CQR)
-    predictions$drcosarc.gui.cqr <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive-cqr")   
 
     return(predictions)
 }
