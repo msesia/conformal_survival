@@ -270,7 +270,7 @@ impute_drcosarc <- function(data.cal, cens_imputator) {
 
 predict_drcosarc <- function(data.test, surv_model, cens_imputator, data.cal, alpha, c0=NULL, tuning.package=NULL, cutoffs="adaptive",
                               finite_sample_correction = FALSE, doubly_robust = TRUE, alpha_hat_values = NULL) {
-    
+
     ## Impute the missing censoring times for calibration data
     C.cal <- impute_drcosarc(data.cal, cens_imputator)
 
@@ -310,44 +310,56 @@ predict_drcosarc <- function(data.test, surv_model, cens_imputator, data.cal, al
     return(out)
 }
 
+generate_probs_seq <- function(num_a) {
+    probs <- seq(0.01, 0.99, length.out=num_a)
+    return(probs)
+}
 
-compute_alpha_hat_Gui <- function(data.cal, C.cal, surv_model, cens_model, num_a, shift=0, use_censoring_model=TRUE, use_cqr=FALSE, alpha_cqr=NULL) {
+compute_alpha_hat_Gui <- function(data.cal, C.cal, surv_model, cens_model, num_a, shift=0, use_censoring_model=TRUE, censoring_beta=NULL,
+                                  use_cqr=FALSE, alpha_cqr=NULL) {
     Y.cal <- data.cal$time
     num_cal <- nrow(data.cal)
 
-    ## List of percentiles for estimated survival distribution
-    probs <- seq(0.01, 0.99, length.out=num_a)
+    if(use_censoring_model) stopifnot(!is.null(censoring_beta))
 
-    ## List of shifts to correct CQR predictions
-    shifts <- seq(0, 1, length.out=num_a)
-    
+    ## List of percentiles for estimated survival distribution
+    probs <- generate_probs_seq(num_a)
+
     ## Estimate miscoverage as a function of calibration parameter a
     estimate_alpha_hat <- function(num_a) {
         ## Construct sequences of predictions based on parameters a
         if(!use_cqr) {
             ## Predict the survival quantiles for the given nominal percentiles
+            pred.cal <- as.matrix(pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0))
             if(use_censoring_model) {
-                pred.T.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
-                beta = 1/pmax(1,log(num_cal))
-                pred.C.cal <- cens_model$predict_quantiles(data.cal, probs = 1-beta)[[1]]
-                pred.cal <- t(sapply(1:nrow(pred.T.cal), function(i) pmin(pred.T.cal[i, ], pred.C.cal[i])))
-            } else {
-                pred.cal <- pmax(surv_model$predict_quantiles(data.cal, probs = probs) - shift, 0)
+                pred.C.cal <- as.numeric(cens_model$predict_quantiles(data.cal, probs = 1-censoring_beta)[[1]])
+                pred.cal <- pmin(pred.cal, pred.C.cal)                
             }
         } else {
             stopifnot(!is.null(alpha_cqr))
+            shifts <- seq(0, 1, length.out=num_a)
             pred.cal.raw <- as.numeric(surv_model$predict_quantiles(data.cal, probs = alpha_cqr)[[1]])
-            max.shift <- max(pred.cal.raw)
+            pred.cal.raw <- matrix(pred.cal.raw, nrow = num_cal, ncol = length(shifts))
             shifts.mat <- matrix(shifts, num_cal, length(shifts), byrow = TRUE)
-            pred.cal.raw <- matrix(pred.cal.raw, nrow = length(pred.cal.raw), ncol = length(shifts))
             pred.cal <- pmax(pred.cal.raw * shifts.mat, 0)
         }
 
         ## Compute the weights a function of a
         weights.cal.mat <- matrix(0, num_cal, num_a)
         for(i in 1:num_cal) {
-            c0_seq = as.numeric(pred.cal[i,])
-            weights.cal.mat[i,] <- 1/pmax(1e-6, cens_model$predict(data.cal[i,], time.points=c0_seq)$predictions)
+            c0_seq <- as.numeric(pred.cal[i,])
+            cens_surv_probs <- cens_model$predict(data.cal[i,], time.points=c0_seq)$predictions
+            weight_tol <- 1e-4
+            idx.too.small <- which(cens_surv_probs<weight_tol)
+            if(length(idx.too.small)>0) {
+                ## RAISE WARNING IF INVERSE WEIGHTS ARE TOO SMALL!
+                if(use_censoring_model) {
+                    stop("Error: unstable weights! Try using option use_censoring_model=TRUE.\n")
+                } else {
+                    stop("Error: unstable weights! Try using option use_censoring_model=TRUE.\n")
+                }
+            }
+            weights.cal.mat[i,] <- 1/cens_surv_probs
         }
 
         ## Estimate alpha as a function of a
@@ -371,31 +383,34 @@ compute_alpha_hat_Gui <- function(data.cal, C.cal, surv_model, cens_model, num_a
     return(alpha_hat_values)
 }
 
-predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_censoring_model=TRUE, finite_sample_correction = TRUE,
-                        alpha_hat_values = NULL, use_cqr=FALSE) {
+predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_censoring_model=TRUE, censoring_beta=NULL,
+                        finite_sample_correction = FALSE, alpha_hat_values = NULL, use_cqr=FALSE) {
 
     Y.cal <- data.cal$time
     num_cal <- nrow(data.cal)
     num_test <- nrow(data.test)
+
+    if(is.null(censoring_beta)) {
+        # Default value for censoring beta constant (for numerical stability)
+        censoring_beta = 1/pmax(1,log(num_cal)) # This is the value suggested by Gui et al., which we used in the paper        
+    }
 
     if(is.null(alpha_hat_values)) {
         ## Number of distinct values for tuning parameter alpha
         num_a <- 200
 
         ## List of percentiles for estimated survival distribution
-        probs <- seq(0.01, 0.99, length.out=num_a)
-        
+        probs <- generate_probs_seq(num_a)
+
         ## Compute alpha_hat values
-        alpha_hat_values <- compute_alpha_hat_Gui(data.cal, C.cal, surv_model, cens_model, num_a, shift=0, use_censoring_model=use_censoring_model,
-                                                  use_cqr=use_cqr, alpha_cqr=alpha)
+        alpha_hat_values <- compute_alpha_hat_Gui(data.cal, C.cal, surv_model, cens_model, num_a, shift=shift, use_censoring_model=use_censoring_model,
+                                                  censoring_beta = censoring_beta, use_cqr=use_cqr, alpha_cqr=alpha)
     } else {
         num_a <- length(alpha_hat_values)
         ## List of percentiles for estimated survival distribution
-        probs <- seq(0.01, 0.99, length.out=num_a)
+        probs <- generate_probs_seq(num_a)
     }
-        
-    ##plot(1:num_a, alpha_hat_values)
-    
+
     ## Find the smallest a such that alpha_hat(a) < alpha
     if(finite_sample_correction) {
         alpha_adjusted <- alpha - (1-alpha)/num_cal - (1) / sqrt(num_cal)
@@ -404,26 +419,21 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
         alpha_adjusted <- alpha
     }
 
-    idx.valid <- which(alpha_hat_values<=alpha_adjusted)    
+    idx.valid <- which(alpha_hat_values<=alpha_adjusted)
 
     ## Make predictions for test data
     if(!use_cqr) {
+        pred.test <- as.matrix(pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift, 0))
         if(use_censoring_model) {
-            pred.T.test <- pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift,0 )
-            beta = 1/pmax(1,log(num_cal))
-            pred.C.test <- cens_model$predict_quantiles(data.test, probs = 1-beta)[[1]]
-            pred.test <- t(sapply(1:nrow(pred.T.test), function(i) pmin(pred.T.test[i, ], pred.C.test[i])))
-        } else {
-            pred.test <- pmax(surv_model$predict_quantiles(data.test, probs = probs) - shift, 0)
+            pred.C.test <- as.numeric(cens_model$predict_quantiles(data.test, probs = 1-censoring_beta)[[1]])
+            pred.test <- pmin(pred.test, pred.C.test)
         }
-
     } else {
         ## List of shifts to correct CQR predictions
         shifts <- seq(0, 1, length.out=num_a)
-        
-        shifts.mat <- matrix(shifts, num_cal, length(shifts), byrow = TRUE)
+        shifts.mat <- matrix(shifts, num_test, length(shifts), byrow = TRUE)
         pred.test.raw <- as.numeric(surv_model$predict_quantiles(data.test, probs = alpha)[[1]])
-        pred.test.raw <- matrix(pred.test.raw, nrow = length(pred.test.raw), ncol = length(shifts))
+        pred.test.raw <- matrix(pred.test.raw, nrow = num_test, ncol = length(shifts))
         shifts.mat <- matrix(shifts, num_test, length(shifts), byrow = TRUE)
         pred.test <- pmax(pred.test.raw * shifts.mat, 0)
     }
@@ -438,9 +448,10 @@ predict_Gui <- function(data.test, surv_model, cens_model, data.cal, C.cal, alph
             a.star <- num_a
             lower <- as.numeric(pred.test[,a.star]) * 0
         } else {
+            print("Warning!")
             lower <- predict_Gui(data.test, surv_model, cens_model, data.cal, C.cal, alpha, shift=0, use_cqr=TRUE, finite_sample_correction = finite_sample_correction)
         }
     }
-    
+
     return(lower)
 }

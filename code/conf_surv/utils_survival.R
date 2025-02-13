@@ -232,17 +232,18 @@ SurvivalModelWrapper <- R6::R6Class("SurvivalModelWrapper",
         survival_curves <- predictions$predictions
         time_points <- predictions$time.points  # Time points associated with the survival curves
 
-        ## Function to find the survival time corresponding to a given survival percentile
+        # Add padding to ensure interpolation will work
+        survival_curves <- cbind(1,survival_curves,0)
+        time_points <- c(0,time_points,max(time_points)+1)
+        
+        ## Function to find the survival time corresponding to a given survival percentile using built-in interpolation
         find_quantile <- function(survival_probs, time_points, percentile) {
-            # Find the first time where survival probability drops below the percentile
-            index <- which.max(survival_probs <= (1 - percentile))
-            if (length(index) == 0 || index == 1) {
-                return(max(time_points))  ## No time found (quantile is not reached)
-            } else {
-                return(time_points[index])  # Return the corresponding time point
-            }
+            target_prob <- 1 - percentile  # Convert percentile to survival probability threshold
+            ## Use linear interpolation
+            interpolated_time <- approx(x = rev(survival_probs), y = rev(time_points), xout = target_prob, rule = 2, ties="ordered")$y
+            return(interpolated_time)
         }
-
+       
         ## Initialize a list to store quantiles for each individual
         quantiles_list <- list()
 
