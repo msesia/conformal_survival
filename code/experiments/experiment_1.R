@@ -356,14 +356,16 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     ## }
 
     ## Apply drcosarc (Candes, with fixed c0)
-    predictions$drcosarc.candes <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="candes-fixed")
+    predictions$drcosarc.candes <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, doubly_robust=TRUE, cutoffs="candes-fixed")
+    predictions$drcosarc.candes.ndr <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, doubly_robust=FALSE, cutoffs="candes-fixed")
 
     ## ## ## Apply drcosarc (Candes, with tuned c0)
     ## tuning.package <- list(data.train = data.train)
     ## predictions$drcosarc.candes.tuned <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, tuning.package=tuning.package, cutoffs="candes-tuning")
 
     ## Apply drcosarc (Gui)
-    predictions$drcosarc.gui <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, cutoffs="adaptive", finite_sample_correction=fsc)
+    predictions$drcosarc.gui <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, doubly_robust=TRUE, cutoffs="adaptive", finite_sample_correction=fsc)
+    predictions$drcosarc.gui.ndr <- predict_drcosarc(data.test, surv_model, cens_model, data.cal, alpha, doubly_robust=FALSE, cutoffs="adaptive", finite_sample_correction=fsc)
 
     return(predictions)
 }

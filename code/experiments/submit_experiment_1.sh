@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Parameters
-SETUP=1b
+SETUP=1
 
 if [[ $SETUP == 0 ]]; then
   # Data distribution setting
@@ -27,11 +27,11 @@ if [[ $SETUP == 0 ]]; then
 
 elif [[ $SETUP == 1 ]]; then
   # Data distribution setting
-  SETTING_LIST=(7 8 1 3 5 10)
+  SETTING_LIST=(7 8 10) #1 3 5 10)
   # Survival model types
-  SURV_MODEL_TYPE_LIST=("grf" "rf" "cox" "survreg")
+  SURV_MODEL_TYPE_LIST=("grf") # "rf" "cox" "survreg")
   # Censoring model types
-  CENS_MODEL_TYPE_LIST=("grf" "cox")
+  CENS_MODEL_TYPE_LIST=("grf") # "cox")
   # List of training sample sizes
   N_TRAIN_LIST=(1000)
   # List of censoring training sample sizes
@@ -49,7 +49,7 @@ elif [[ $SETUP == 1 ]]; then
 
 elif [[ $SETUP == 1b ]]; then
   # Data distribution setting
-  SETTING_LIST=(7 8 1)
+  SETTING_LIST=(7 8 10)
   # Survival model types
   SURV_MODEL_TYPE_LIST=("grf")
   # Censoring model types
