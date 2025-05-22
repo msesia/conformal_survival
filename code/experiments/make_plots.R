@@ -21,15 +21,28 @@ method_colors <- c(
   "Drcosarc (Candes)" = "blue4",
   "Drcosarc (Gui et al., oracle censoring model)" = "green",
   "DR-COSARC (fixed)" = "green3",
-  "DR-COSARC (adaptive)" = "green4"
+  "DR-COSARC (adaptive)" = "green4",
+  "DR-COSARC (fixed, not DR)" = "green3",
+  "DR-COSARC (adaptive, not DR)" = "green4"
 )
+
+## method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
+## #                   "candes.oracle",
+## #                   "gui.oracle",
+## #                   "gui.oracle.cqr",
+##                    "prototype.candes",
+##                    "prototype.gui"
+## #                   "drcosarc.gui.cqr",                   
+##                    )
 
 method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
 #                   "candes.oracle",
 #                   "gui.oracle",
 #                   "gui.oracle.cqr",
                    "drcosarc.candes",
-                   "drcosarc.gui"
+                   "drcosarc.candes.ndr",
+                   "drcosarc.gui",
+                   "drcosarc.gui.ndr"
 #                   "drcosarc.gui.cqr",                   
                    )
 
@@ -38,7 +51,9 @@ method.labels <- c("Oracle", "Uncalibrated", "Naive CQR", "KM Decensoring",
 #                   "Drcosarc (Candes)",
 #                   "Drcosarc (Gui et al., oracle)",
                    "DR-COSARC (fixed)",
-                   "DR-COSARC (adaptive)"                   
+                   "DR-COSARC (fixed, not DR)",
+                   "DR-COSARC (adaptive)",
+                   "DR-COSARC (adaptive, not DR)"                   
                    )
 
 setting.values <- c(8,7,10,9,1:6)
@@ -119,6 +134,43 @@ make_figure_1 <- function(plot_surv_model=NULL, plot_cens_model="grf", plot_n_tr
 results <- load_data(1)
 make_figure_1(plot_cens_model="grf", plot_surv_model="grf", plot_n_train=1000, plot_n_cal=1000)
 
+make_figure_1_dr <- function(plot_surv_model=NULL, plot_cens_model="grf", plot_n_train=500, plot_n_cal=500) {
+    setting.list <- c(7,8,10)
+    df <- results %>% filter(setting %in% setting.list, surv_model_type==plot_surv_model)
+    out.file <- sprintf("figures/exp1_fig1_bp_surv_%s_cens_%s_n%d_n%d_dr.pdf",
+                        plot_surv_model, plot_cens_model, plot_n_train, plot_n_cal)
+    plot.height <- 3.5
+    summary <- df %>%
+        mutate(`Surv. model` = surv_model_type) %>%
+        filter(setting %in% setting.list, cens_model_type==plot_cens_model, n_train==plot_n_train, n_cal==plot_n_cal) %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha) %>%
+        mutate(`Mean lower bound` = `Mean lower bound` / mean(`Mean lower bound`[Method=="oracle"])) %>%
+        ungroup() %>%
+        pivot_longer(c("Coverage (event time)", "Mean lower bound"), names_to="metric", values_to="value") %>%
+        mutate(metric = factor(metric, c("Coverage (event time)", "Mean lower bound"), c("Coverage", "Lower Bound"))) %>%
+        filter(Method %in% method.values) %>%
+        mutate(Method = fct_rev(factor(Method, levels = method.values, labels = method.labels))) %>%
+        mutate(Setting = factor(setting, setting.values, setting.labels))
+    if(nrow(summary)==0) return(0)
+    df.limits <- tibble(metric=c("Coverage","Coverage", "Lower Bound", "Lower Bound"), value=c(0,1,0,1), Method="Oracle")
+    ## Plotting the data
+    if(nrow(summary)==0) return()
+    pp <- summary %>%
+        ggplot(aes(y = Method, x = value, color=Method)) +
+        geom_boxplot() +
+        scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
+        geom_vline(data = summary %>% filter(metric=="Coverage"), aes(xintercept = 0.9), linetype = "dashed", color="red") +
+        geom_point(data=df.limits, alpha=0) +
+        xlab("") +
+        scale_x_continuous(breaks = seq(0, 1, by = 0.25)) +
+        theme_bw() +
+        theme(legend.position = "none") +
+        facet_grid(Setting ~ metric, scales = "free", labeller = labeller(Setting = label_both, metric = label_value))
+    ggsave(out.file, plot = pp, width = 6, height = plot.height, units = "in")
+}
+results <- load_data(1)
+make_figure_1_dr(plot_cens_model="grf", plot_surv_model="grf", plot_n_train=1000, plot_n_cal=1000)
+
 
 
 make_boxplot <- function(plot_setting=1, plot_surv_model=NULL, plot_cens_model="grf", plot_n_train=500, plot_n_cal=500) {
@@ -177,7 +229,7 @@ make_figure_1b <- function(plot_surv_model=NULL, plot_cens_model="grf", plot_n_t
     df <- results %>% filter(setting %in% setting.list, surv_model_type==plot_surv_model)
     out.file <- sprintf("figures/exp1b_fig1_bp_surv_%s_cens_%s_n%d_n%d.pdf",
                         plot_surv_model, plot_cens_model, plot_n_train, plot_n_cal)
-    plot.height <- 3.5
+    plot.height <- 4
     summary <- df %>%
         mutate(`Surv. model` = surv_model_type) %>%
         filter(setting %in% setting.list, cens_model_type==plot_cens_model, n_train==plot_n_train, n_cal==plot_n_cal) %>%
@@ -230,24 +282,33 @@ make_plot_2 <- function(plot_setting=1) {
         ggplot(aes(y = value, x = n_train_cens, color=Method, shape=Method)) +
         geom_point() +
         geom_line() +
-#        geom_errorbar(aes(ymin = value - 2*SE, ymax = value + 2*SE), width = 0.2) +
+                                        #        geom_errorbar(aes(ymin = value - 2*SE, ymax = value + 2*SE), width = 0.2) +
         scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
-##        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
+        ##        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
         geom_point(data=df.limits, alpha=0) +
         scale_x_log10() +
         xlab("Number of training samples for censoring model") +
         ylab("") +
-        theme_bw()
+        theme_bw() +
+        theme(
+            legend.position = "bottom",
+            legend.direction = "horizontal",
+            legend.justification = "center",
+            legend.box.just = "center",
+            legend.box = "horizontal",
+            plot.margin = margin(t = 5, r = 5, b = 5, l = -10)            
+        )+
+        guides(color = guide_legend(nrow = 2))
     out.file <- sprintf("figures/exp2_%s.pdf", paste(plot_setting,collapse="_"))
     if(length(plot_setting)==1) {
-        plot.height <- 2
+        plot.height <- 3
         pp <- pp + facet_wrap(metric ~ ., scales = "free", nrow=1)
 
     } else {
         plot.height <- 4
         pp <- pp + facet_wrap(Setting ~ metric, scales = "free", labeller = labeller(Setting = label_both, metric = label_value))
     }
-    ggsave(out.file, plot = pp, width = 6, height = plot.height, units = "in")
+    ggsave(out.file, plot = pp, width = 5, height = plot.height, units = "in")
 }
 
 results <- load_data(2)
@@ -280,6 +341,7 @@ make_plot_3 <- function(plot_setting=1) {
         geom_point(data=df.limits, alpha=0) +
         scale_x_log10() +
         xlab("Number of training samples") +
+        ylab("") +
         theme_bw()
     out.file <- sprintf("figures/exp3_%s.pdf", paste(plot_setting,collapse="_"))
     if(length(plot_setting)==1) {
