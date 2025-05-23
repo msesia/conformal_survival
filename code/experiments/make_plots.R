@@ -26,6 +26,13 @@ method_colors <- c(
   "DR-COSARC (adaptive, not DR)" = "green4"
 )
 
+# Custom shape mapping (optional)
+method_shapes <- c(
+  "KM Decensoring" = 3, # Square (same as CQR)
+  "DR-COSARC (fixed)" = 7, # Diamond
+  "DR-COSARC (adaptive)" = 8 # asterisk
+)
+
 ## method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
 ## #                   "candes.oracle",
 ## #                   "gui.oracle",
@@ -40,9 +47,9 @@ method.values <- c("oracle", "nominal", "cqr", "cqr.decensor",
 #                   "gui.oracle",
 #                   "gui.oracle.cqr",
                    "drcosarc.candes",
-                   "drcosarc.candes.ndr",
-                   "drcosarc.gui",
-                   "drcosarc.gui.ndr"
+#                   "drcosarc.candes.ndr",
+                   "drcosarc.gui"
+#                   "drcosarc.gui.ndr"
 #                   "drcosarc.gui.cqr",                   
                    )
 
@@ -51,9 +58,9 @@ method.labels <- c("Oracle", "Uncalibrated", "Naive CQR", "KM Decensoring",
 #                   "Drcosarc (Candes)",
 #                   "Drcosarc (Gui et al., oracle)",
                    "DR-COSARC (fixed)",
-                   "DR-COSARC (fixed, not DR)",
-                   "DR-COSARC (adaptive)",
-                   "DR-COSARC (adaptive, not DR)"                   
+#                   "DR-COSARC (fixed, not DR)",
+                   "DR-COSARC (adaptive)"
+#                   "DR-COSARC (adaptive, not DR)"                   
                    )
 
 setting.values <- c(8,7,10,9,1:6)
@@ -407,6 +414,59 @@ results <- load_data(4)
 make_plot_4(plot_setting=8)
 make_plot_4(plot_setting=c(7,10))
 
+
+make_plot_4_stability <- function(plot_setting=1) {
+    df <- results %>% filter(setting %in% plot_setting)
+
+    ## Pivot longer and assign factor with custom labels
+    df_long <- df %>%
+        pivot_longer(cols = all_of(method.values), 
+                     names_to = "method", 
+                     values_to = "value") %>%
+        filter(method %in% c("cqr.decensor", "drcosarc.candes", "drcosarc.gui")) %>%        
+        mutate(Method = factor(method, levels = method.values, labels = method.labels))
+
+    summary <- df_long %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha, Method, batch, id) %>%
+        summarise(value.mean = mean(value), value.sd = sd(value), value.cv = value.sd/value.mean,
+                  value.cv = ifelse(is.nan(value.cv), 0, value.cv), batch_size=n()) %>%
+        filter(batch_size>1) %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha, Method, batch) %>%
+        summarise(value.cv = mean(value.cv, na.rm=TRUE)) %>%
+        group_by(setup, setting, n_train, n_train_cens, n_cal, num_feat_censor, alpha, Method) %>%
+        summarise(cv.mean = mean(value.cv), cv.se = sd(value.cv)/sqrt(n()), N=n()) %>%
+        mutate(Setting = factor(setting, setting.values, setting.labels))        
+        
+    ## Plotting the data
+    if(nrow(summary)==0) return()
+    pp <- summary %>%
+        filter(n_train>=100) %>%
+        ggplot(aes(y = cv.mean, x = n_cal, color=Method, shape=Method)) +
+        geom_point(alpha=0.75) +
+        geom_line(alpha=0.75) +
+        geom_errorbar(aes(ymin = cv.mean - 2*cv.se, ymax = cv.mean + 2*cv.se), width = 0.2) +
+        scale_color_manual(values = method_colors) + # Apply custom color scale mapped to Method labels
+        scale_shape_manual(values = method_shapes) + # Apply custom shape scale (optional)
+##        geom_hline(data = summary %>% filter(metric=="Coverage"), aes(yintercept = 0.9), linetype = "dashed", color="red") +
+        facet_wrap(.~Setting, nrow=1, scales="free", labeller = labeller(Setting = label_both)) +
+        scale_x_log10() +
+        xlab("Number of calibration samples") +
+        ylab("Coefficient of Variation") +
+        theme_bw()
+    
+    out.file <- sprintf("figures/exp4s_%s.pdf", paste(plot_setting,collapse="_"))
+    if(length(plot_setting)==1) {
+        plot.height <- 2
+
+    } else {
+        plot.height <- 2
+    }
+    ggsave(out.file, plot = pp, width = 6.5, height = plot.height, units = "in")
+}
+
+results <- load_data("4s")
+
+make_plot_4_stability(plot_setting=c(8,7,10))
 
 
 make_plot_5 <- function(plot_setting=1) {

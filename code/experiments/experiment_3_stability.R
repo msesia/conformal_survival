@@ -375,15 +375,7 @@ run_experiment <- function(random.state, random.state.data) {
     predictions <- analyze_data(data.train, data.cal, data.test, surv_model, cens_model, generator=generator,
                                 C.train.oracle=C.train.oracle, C.cal.oracle=C.cal.oracle, random.state=random.state)
 
-    ## Evaluate results
-    results <- do.call(rbind, lapply(names(predictions), function(name) {
-        res = evaluate_bounds(data.test$time, predictions[[name]],
-                              event_time=data.test.oracle$event_time, oracle=predictions$oracle)
-
-        cbind(Method = name, res)
-    }))
-
-    return(results)
+    return(predictions)
 }
 
 
